@@ -66,7 +66,7 @@ It cannot approve, reopen, supersede, restore, resolve or dismiss, and it cannot
 
 - **The guards are not a security boundary.** They stop accidents and drift. A determined model could obfuscate a command. They do not apply to what you type yourself, which is intended.
 - **A hook that cannot run does not block anything.** If `node` is missing, the hooks fail without stopping the AI.
-- **The Bash guard is blunt.** It looks for `board <word>` anywhere in a command, so a command that merely contains that text (for example a commit message "update the board view") is blocked too. It also blocks any command that mentions `.board/`.
+- **The Bash guard is a speed bump, not a lock.** It blocks `board approve|reopen|supersede|restore|init|add|edit|project|gap` and any bare `.board` path, and only in a project that has a board (with none, only `board init` is blocked). Words that are not subcommands, such as "the board is red" in a commit message, pass. It can be fooled by obfuscation: a quoted command name, a variable (`B=board; $B approve`), a pipe into `xargs`, or `cd .board`-style tricks that avoid the path word. Symlinks into `.board/` are caught by the write guard only.
 - **The gap lint is a heuristic.** It catches obvious slips such as "you should add...".
 - **"The AI never says ready, approved, complete or looks good" lives in the skill text only.** Code cannot enforce wording. Read what the AI says.
 - **Tested headless (`claude -p`) with a scripted check (`node scripts/e2e-plugin.mjs`),** not yet in an interactive session. `MultiEdit` and `NotebookEdit` are covered by name in the write guard (unit-tested) but were not exercised in a real session.

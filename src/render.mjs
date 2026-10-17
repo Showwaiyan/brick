@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { load, TOOL_NAME } from './store.mjs';
+import { load, TOOL_NAME, PLUGIN_NAME } from './store.mjs';
 import { children, activeChildren, displayState, openGaps, nextCommands } from './model.mjs';
 import { eventsFor } from './text.mjs';
 
@@ -31,7 +31,7 @@ export function pageData(data, now) {
       open_gaps: openGaps(data, n.id).length,
       gaps: gaps.map((g) => ({
         id: g.id, missing: g.missing, where: g.where, status: g.status, note: g.note,
-        commands: [`${TOOL_NAME} gap resolve ${g.id} --note "…"`, `${TOOL_NAME} gap dismiss ${g.id} --why "…"`],
+        commands: [`/${PLUGIN_NAME}:resolve ${g.id} --note "…"`, `/${PLUGIN_NAME}:dismiss ${g.id} --why "…"`],
       })),
       history: eventsFor(data, n.id).slice(0, 10).map((e) => ({ seq: e.seq, at: e.at, actor: e.actor, action: e.action, summary: summary(e) })),
       next_commands: nextCommands(data, n.id),

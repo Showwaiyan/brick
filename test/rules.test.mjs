@@ -91,7 +91,7 @@ test('restore works for direct supersedes only, and returns nodes as drafting', 
   const { dir, x } = await setup();
   x('approve', 'p1');
   x('supersede', 'b1', '--why', 'oops');
-  assert.throws(() => x('restore', 'p1'), /Restore that one instead: board restore b1/);
+  assert.throws(() => x('restore', 'p1'), /Restore that one instead: \/brick:restore b1/);
   assert.match(x('restore', 'b1'), /restored b1, p1, p2 \(as drafting\)/);
   const d = load(dir);
   assert.equal(d.nodes.p1.status, 'drafting');

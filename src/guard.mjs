@@ -14,13 +14,19 @@ const T = TOOL_NAME;
 // The tool name is built from TOOL_NAME so a rename keeps the guard in step.
 const CALL = new RegExp(`(^|[\\s;&|(\`$"'])(?:\\S*/)?${T}(?:\\.mjs)?\\s+([A-Za-z-]+)(?:\\s+([A-Za-z-]+))?`, 'g');
 const READ_ONLY = ['ls', 'show', 'log', 'brief', 'render', 'open', 'help'];
+// Subcommands of ours. A word that is not one of these ("board is", "board layout") is ordinary text.
+const KNOWN = ['approve', 'reopen', 'supersede', 'restore', 'init', 'add', 'edit', 'project', 'gap', 'ai'];
 const AI_ALLOWED = ['add', 'edit', 'gap', 'project'];
 
-// True when one `board ...` call is something the AI may run.
+// True when one `board ...` call is something the AI may run (or is not a board call at all).
 function allowedCall(first, second) {
   if (READ_ONLY.includes(first)) return true;
-  return first === 'ai' && AI_ALLOWED.includes(second);
+  if (first === 'ai') return AI_ALLOWED.includes(second);
+  return !KNOWN.includes(first);
 }
+
+// A bare .board word (not .boardrc, not my.boardfile): a path, a cd, an ls.
+const DATA_WORD = new RegExp(`(^|[\\s"'\`=(/])${DATA_DIR.replace('.', '\\.')}(?![\\w-])`);
 
 // Slash command a human types for each blocked `board` subcommand.
 const SLASH = { approve: 'approve', reopen: 'reopen', supersede: 'supersede', restore: 'restore', init: 'init' };
@@ -37,23 +43,34 @@ function blockMessage(first, second) {
 }
 
 // Decides on a Bash command. Returns null to allow, or the message that blocks it.
-export function checkBash(command) {
+// With no board in the project only `init` is blocked: there is nothing to protect yet.
+export function checkBash(command, hasBoard = true) {
   const text = String(command || '');
   for (const m of text.matchAll(CALL)) {
-    if (!allowedCall(m[2], m[3])) return blockMessage(m[2], m[3]);
+    if (hasBoard ? !allowedCall(m[2], m[3]) : m[2] === 'init') return blockMessage(m[2], m[3]);
   }
-  if (text.includes(`${DATA_DIR}/`)) {
+  if (hasBoard && DATA_WORD.test(text)) {
     return `Do not read or write ${DATA_DIR}/ directly. Use ${T} ls, ${T} show <id> or ${T} brief instead.`;
   }
   return null;
 }
 
 // Decides on a file path for Write/Edit. Returns null to allow, or the blocking message.
-export function checkWrite(filePath) {
+export function checkWrite(filePath, cwd = process.cwd()) {
   if (!filePath) return null;
-  const segments = path.resolve(String(filePath)).split(path.sep);
-  if (segments.includes(DATA_DIR)) return `${DATA_DIR}/ is written only by the ${T} command. Use ${T} ai ... instead.`;
+  const full = path.resolve(cwd, String(filePath));
+  for (const p of [full, realPathOf(full)]) {
+    if (p.split(path.sep).includes(DATA_DIR)) return `${DATA_DIR}/ is written only by the ${T} command. Use ${T} ai ... instead.`;
+  }
   return null;
+}
+
+// The real path of a file that may not exist yet: resolve the nearest existing parent, keep the rest.
+function realPathOf(full) {
+  let cur = full;
+  const rest = [];
+  while (!fs.existsSync(cur) && path.dirname(cur) !== cur) { rest.unshift(path.basename(cur)); cur = path.dirname(cur); }
+  try { return path.join(fs.realpathSync(cur), ...rest); } catch { return full; }
 }
 
 // The path a write-type tool is about to touch (Write/Edit/MultiEdit use file_path, NotebookEdit notebook_path).
@@ -85,8 +102,9 @@ export function runGuard(sub, stdinText, cwd) {
   if (sub === 'prompt') return { code: 0, out: runSlash(input.command_name || '', input.command_args || '', input.cwd || cwd), err: '' };
   if (sub === 'session-start') return { code: 0, out: sessionStart(input.cwd || cwd), err: '' };
   let message = null;
-  if (sub === 'bash') message = checkBash(input.tool_input?.command);
-  else if (sub === 'write') message = checkWrite(pathOf(input.tool_input));
+  const where = input.cwd || cwd;
+  if (sub === 'bash') message = checkBash(input.tool_input?.command, findProject(where).exists);
+  else if (sub === 'write') message = findProject(where).exists ? checkWrite(pathOf(input.tool_input), where) : null;
   else return { code: 0, out: '', err: '' };
   return message ? { code: 2, out: '', err: message } : { code: 0, out: '', err: '' };
 }

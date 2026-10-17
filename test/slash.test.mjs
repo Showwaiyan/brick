@@ -67,7 +67,7 @@ test('Review Focus: shell syntax in arguments stays literal text', async () => {
 });
 
 test('Review Focus: missing id, no board, and a corrupt tree.json', async () => {
-  assert.match(runSlash('brick:approve', '', (await setup()).cwd), /Usage: board approve <id>/);
+  assert.match(runSlash('brick:approve', '', (await setup()).cwd), /Usage: \/brick:approve <id>/);
   const empty = tmp();
   const none = runSlash('brick:approve', 'p3', empty);
   assert.match(none, /^\[brick\] No \.board\/ here\. Run: \/brick:init/);
@@ -82,4 +82,21 @@ test('commands that are not ours are ignored silently', async () => {
   for (const name of ['approve', 'other:approve', 'brick:decompose', 'brick:nope', '', undefined]) {
     assert.equal(runSlash(name, 'b1', cwd), '', String(name));
   }
+});
+
+test('review fix: errors name /brick: commands, never the board CLI', async () => {
+  const { cwd, dir } = await setup();
+  assert.match(runSlash('brick:approve', '', cwd), /Usage: \/brick:approve <id>/);
+  assert.match(runSlash('brick:reopen', '', cwd), /Usage: \/brick:reopen/);
+  assert.match(runSlash('brick:dismiss', '', cwd), /Usage: \/brick:dismiss/);
+  runSlash('brick:approve', 'b1', cwd);
+  execute(dir, ['add', 'problem', 'Leaf', '--parent', 'b2']);
+  const leaf = runSlash('brick:approve', 'p1', cwd);
+  assert.match(leaf, /Tell Claude the input for p1/);
+  assert.ok(!/board (approve|reopen|edit|restore|init)/.test(leaf));
+  const wt = (await import('./helpers.mjs')).gitRepo();
+  const { git } = await import('./helpers.mjs');
+  const wtDir = path.join(tmp(), 'wt');
+  git(wt, 'worktree', 'add', '-q', wtDir, '-b', 'feat');
+  assert.match(runSlash('brick:init', 'X', wtDir), /Run \/brick:init in the main checkout/);
 });

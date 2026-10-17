@@ -1,7 +1,7 @@
 // Plain-text output: ls, show, log, brief, help.
 import { children, displayState, openGaps, nextCommands } from './model.mjs';
 import { approveCheck } from './rules.mjs';
-import { TOOL_NAME } from './store.mjs';
+import { TOOL_NAME, PLUGIN_NAME } from './store.mjs';
 
 const T = TOOL_NAME;
 const LABEL = { approved: 'approved', drafting: 'drafting', has_gaps: 'has gaps', superseded: 'superseded' };
@@ -103,7 +103,7 @@ function nextStep(data) {
   if (!Object.keys(data.nodes).length) return `${T} add box "<title>"`;
   const drafting = postOrder(data).filter((n) => n.status === 'drafting');
   const ready = drafting.find((n) => approveCheck(data, n.id) === null);
-  if (ready) return `${T} approve ${ready.id}`;
+  if (ready) return `/${PLUGIN_NAME}:approve ${ready.id}`;
   return drafting.length ? `${T} show ${drafting[0].id}   (see what is left to fill in)` : `${T} ls`;
 }
 

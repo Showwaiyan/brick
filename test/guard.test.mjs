@@ -12,8 +12,10 @@ const BIN = path.resolve('bin/board.mjs');
 function guard(sub, payload, cwd = tmp()) {
   return spawnSync('node', [BIN, 'guard', sub], { input: JSON.stringify(payload), encoding: 'utf8', cwd });
 }
-const bash = (command) => guard('bash', { hook_event_name: 'PreToolUse', tool_name: 'Bash', tool_input: { command } });
-const write = (file_path, tool_name = 'Write') => guard('write', { hook_event_name: 'PreToolUse', tool_name, tool_input: { file_path } });
+// A folder that has a board, so the guards are fully on.
+const BOARD = (() => { const d = tmp(); spawnSync('node', [BIN, 'init', 'G'], { cwd: d }); return d; })();
+const bash = (command, cwd = BOARD) => guard('bash', { hook_event_name: 'PreToolUse', tool_name: 'Bash', tool_input: { command } }, cwd);
+const write = (file_path, tool_name = 'Write', cwd = BOARD) => guard('write', { hook_event_name: 'PreToolUse', tool_name, tool_input: { file_path } }, cwd);
 
 test('guard bash: allowed commands', () => {
   for (const c of ['board ls', 'board ai gap b3 --missing "x"', 'cd x && board show b1', 'node /p/bin/board.mjs brief',
@@ -57,7 +59,7 @@ test('guard write: blocks .board paths, allows others', () => {
   assert.match(write('.board/tree.json').stderr, /written only by the board command/);
   assert.equal(write('src/store.mjs').status, 0);
   assert.equal(write('/abs/proj/not.board/x').status, 0);
-  const nb = guard('write', { tool_name: 'NotebookEdit', tool_input: { notebook_path: '/p/.board/n.ipynb' } });
+  const nb = guard('write', { tool_name: 'NotebookEdit', tool_input: { notebook_path: '/p/.board/n.ipynb' } }, BOARD);
   assert.equal(nb.status, 2);
 });
 
@@ -140,4 +142,29 @@ test('guard prompt: with no board it says to run /brick:init', () => {
   const r = prompt('brick:approve', 'b1', dir);
   assert.equal(r.status, 0);
   assert.match(r.stdout, /\/brick:init/);
+});
+
+test('review fix: ordinary commands that mention "board" are not blocked', () => {
+  for (const c of ['git commit -m "fix: the board is now red"', 'git commit -m "update board layout"', 'echo "board game night"', 'npm run board-build']) {
+    assert.equal(bash(c).status, 0, c);
+  }
+});
+
+test('review fix: with no board, only init is blocked and .board paths are free', () => {
+  const none = tmp();
+  assert.equal(bash('cat .board/x', none).status, 0);
+  assert.equal(bash('git commit -m "update board add button"', none).status, 0);
+  assert.equal(write('/p/.board/x', 'Write', none).status, 0);
+  assert.equal(bash('board init x', none).status, 2);
+  assert.match(bash('board init x', none).stderr, /\/brick:init/);
+});
+
+test('review fix: a bare .board word and a symlink into .board are caught', () => {
+  assert.equal(bash('cd .board && cat tree.json').status, 2);
+  assert.equal(bash('ls -la .board').status, 2);
+  assert.equal(bash('cat my.boardfile').status, 0);
+  const dir = tmp();
+  spawnSync('node', [BIN, 'init', 'L'], { cwd: dir });
+  fs.symlinkSync(path.join(dir, '.board'), path.join(dir, 'sneaky'));
+  assert.equal(write(path.join(dir, 'sneaky/tree.json'), 'Write', dir).status, 2);
 });

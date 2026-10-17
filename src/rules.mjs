@@ -1,9 +1,10 @@
 // The rules. Each function changes `data` in place or throws an Error saying why not.
 // Callers run these inside store.mutate(), so a throw means nothing is saved.
 import { activeChildren, children, isLeaf, openGaps } from './model.mjs';
-import { addEvent, nextId, TOOL_NAME } from './store.mjs';
+import { addEvent, nextId, TOOL_NAME, PLUGIN_NAME } from './store.mjs';
 
 const T = TOOL_NAME;
+const S = `/${PLUGIN_NAME}:`; // slash commands are what the human types
 
 // True for null, undefined, or whitespace-only text.
 export const blank = (s) => s === null || s === undefined || String(s).trim() === '';
@@ -28,7 +29,7 @@ export function approveCheck(data, id) {
   if (open.length) return `${id} has children that are not approved yet: ${open.map((c) => c.id).join(', ')}.`;
   if (isLeaf(data, id)) {
     const missing = ['input', 'output', 'check'].filter((k) => blank(n.contract[k]));
-    if (missing.length) return `${id} is a leaf, so its contract needs: ${missing.join(', ')}. Use: ${T} edit ${id} --${missing[0]} "…"`;
+    if (missing.length) return `${id} is a leaf, so its contract needs: ${missing.join(', ')}. Tell Claude the ${missing[0]} for ${id}, so it can record it.`;
   }
   return null;
 }
@@ -96,7 +97,7 @@ export function restore(data, id, now) {
   const n = needNode(data, id);
   if (n.status !== 'superseded') throw new Error(`${id} is not superseded.`);
   if (n.superseded.cascade_from !== null) {
-    throw new Error(`${id} was superseded along with ${n.superseded.cascade_from}. Restore that one instead: ${T} restore ${n.superseded.cascade_from}`);
+    throw new Error(`${id} was superseded along with ${n.superseded.cascade_from}. Restore that one instead: ${S}restore ${n.superseded.cascade_from}`);
   }
   if (n.parent && data.nodes[n.parent].status === 'superseded') {
     throw new Error(`${id}'s parent ${n.parent} is superseded. Restore the parent first.`);

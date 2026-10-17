@@ -32,15 +32,14 @@ test('displayState: superseded > has_gaps > approved > drafting', () => {
 
 test('nextCommands follows the spec', () => {
   const d = sample();
-  assert.deepEqual(nextCommands(d, 'b2'), ['board approve b2', 'board edit b2 --title "…"', 'board supersede b2 --why "…"']);
+  assert.deepEqual(nextCommands(d, 'b2'), ['/brick:approve b2', '/brick:supersede b2 --why "…"']);
   assert.deepEqual(nextCommands(d, 'p2'), [
-    'board gap resolve g1 --note "…"', 'board gap dismiss g1 --why "…"',
-    'board edit p2 --title "…"', 'board supersede p2 --why "…"',
+    '/brick:resolve g1 --note "…"', '/brick:dismiss g1 --why "…"', '/brick:supersede p2 --why "…"',
   ]);
-  assert.deepEqual(nextCommands(d, 'b1'), ['board reopen b1 --why "…"', 'board supersede b1 --why "…"']);
+  assert.deepEqual(nextCommands(d, 'b1'), ['/brick:reopen b1 --why "…"', '/brick:supersede b1 --why "…"']);
   d.nodes.b2.status = 'superseded';
   d.nodes.b2.superseded = { reason: 'r', by: null, cascade_from: null, at: 'x' };
-  assert.deepEqual(nextCommands(d, 'b2'), ['board restore b2']);
+  assert.deepEqual(nextCommands(d, 'b2'), ['/brick:restore b2']);
   d.nodes.b2.superseded.cascade_from = 'b1';
   assert.deepEqual(nextCommands(d, 'b2'), []);
 });

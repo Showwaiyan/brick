@@ -1,6 +1,6 @@
 // Commands: parse arguments, call the rules, return one short line of text.
 import { parseArgs } from 'node:util';
-import { findProject, load, mutate, nextId, addEvent, TOOL_NAME, DATA_DIR } from './store.mjs';
+import { findProject, load, mutate, nextId, addEvent, TOOL_NAME, DATA_DIR, PLUGIN_NAME } from './store.mjs';
 import { children } from './model.mjs';
 import { approve, reopen, supersede, restore, closeGap, needNode, nextOrder, blank, raiseGapChecked } from './rules.mjs';
 import { ls, show, log, brief, HELP } from './text.mjs';
@@ -41,7 +41,7 @@ export function addNode(data, f, now) {
     if (!f.parent) throw new Error('A problem needs --parent <id>.');
     const p = needNode(data, f.parent);
     if (p.status === 'superseded') throw new Error(`${f.parent} is superseded; nothing can be added under it.`);
-    if (p.status === 'approved') throw new Error(`${f.parent} is approved. Reopen it first: ${T} reopen ${f.parent} --why "…"`);
+    if (p.status === 'approved') throw new Error(`${f.parent} is approved. Reopen it first: /${PLUGIN_NAME}:reopen ${f.parent} --why "…"`);
     parent = f.parent;
   }
   let order = nextOrder(data, parent);
@@ -67,7 +67,7 @@ export function addNode(data, f, now) {
 export function editNode(data, id, f, actor, now) {
   const n = needNode(data, id);
   if (n.status === 'superseded') throw new Error(`${id} is superseded and cannot be edited.`);
-  if (n.status === 'approved') throw new Error(`${id} is approved. Reopen it first: ${T} reopen ${id} --why "…"`);
+  if (n.status === 'approved') throw new Error(`${id} is approved. Reopen it first: /${PLUGIN_NAME}:reopen ${id} --why "…"`);
   const changed = [];
   if (f.title !== undefined) {
     if (blank(f.title)) throw new Error('The title cannot be empty.');

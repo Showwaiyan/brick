@@ -1,9 +1,8 @@
 // Runs the human's typed /brick:<action> commands. No shell is ever involved.
 import { execute } from './commands.mjs';
 import { initProject } from './init.mjs';
-import { findProject, DATA_DIR } from './store.mjs';
+import { findProject, DATA_DIR, PLUGIN_NAME as PLUGIN } from './store.mjs';
 
-const PLUGIN = 'brick';
 const TAG = `[${PLUGIN}]`;
 
 // Engine argv prefix for each human-only action. `init` is handled separately.
@@ -49,6 +48,14 @@ export function tokenize(text) {
   return out;
 }
 
+// Rewrites engine wording so the human is pointed at slash commands, never at the board CLI.
+function humanize(msg) {
+  return String(msg)
+    .replace(/Usage: board gap (resolve|dismiss)/g, `Usage: /${PLUGIN}:$1`)
+    .replace(/Usage: board (\w+)/g, `Usage: /${PLUGIN}:$1`)
+    .replace(/Run board init in the main checkout/g, `Run /${PLUGIN}:init in the main checkout`);
+}
+
 // Runs one typed command. Returns '' if it is not one of ours; otherwise a "[brick] ..." line. Never throws.
 export function runSlash(commandName, argsText, cwd) {
   const name = String(commandName || '');
@@ -61,6 +68,6 @@ export function runSlash(commandName, argsText, cwd) {
     if (!project.exists) return `${TAG} No ${DATA_DIR}/ here. Run: /${PLUGIN}:init "<name>"`;
     return `${TAG} ${execute(project.dir, [...HUMAN[action], ...argv])}`;
   } catch (e) {
-    return `${TAG} ${e.message}`;
+    return `${TAG} ${humanize(e.message)}`;
   }
 }

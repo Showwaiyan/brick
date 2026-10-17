@@ -1,7 +1,7 @@
 // Derived values. Nothing here is stored; it is all computed from tree.json.
-import { TOOL_NAME } from './store.mjs';
+import { PLUGIN_NAME } from './store.mjs';
 
-const T = TOOL_NAME;
+const S = `/${PLUGIN_NAME}:`; // slash-command prefix: these are for the human to type
 
 // Child nodes of a node (null = top-level boxes), ordered by `order`.
 export function children(data, id) {
@@ -35,24 +35,23 @@ export function displayState(data, id) {
   return n.status; // 'approved' or 'drafting'
 }
 
-// The exact commands the human can run on this node right now.
+// The exact slash commands the human can type for this node right now.
 export function nextCommands(data, id) {
   const n = data.nodes[id];
   const cmds = [];
   if (n.status === 'superseded') {
-    if (n.superseded.cascade_from === null) cmds.push(`${T} restore ${id}`);
+    if (n.superseded.cascade_from === null) cmds.push(`${S}restore ${id}`);
     return cmds;
   }
   if (n.status === 'drafting') {
     const gaps = openGaps(data, id);
-    if (gaps.length === 0) cmds.push(`${T} approve ${id}`);
+    if (gaps.length === 0) cmds.push(`${S}approve ${id}`);
     for (const g of gaps) {
-      cmds.push(`${T} gap resolve ${g.id} --note "…"`);
-      cmds.push(`${T} gap dismiss ${g.id} --why "…"`);
+      cmds.push(`${S}resolve ${g.id} --note "…"`);
+      cmds.push(`${S}dismiss ${g.id} --why "…"`);
     }
-    cmds.push(`${T} edit ${id} --title "…"`);
   }
-  if (n.status === 'approved') cmds.push(`${T} reopen ${id} --why "…"`);
-  cmds.push(`${T} supersede ${id} --why "…"`);
+  if (n.status === 'approved') cmds.push(`${S}reopen ${id} --why "…"`);
+  cmds.push(`${S}supersede ${id} --why "…"`);
   return cmds;
 }

@@ -6,6 +6,8 @@ import { execFileSync } from 'node:child_process';
 // The one place the tool's name lives. The data folder is derived from it.
 export const TOOL_NAME = 'board';
 export const DATA_DIR = `.${TOOL_NAME}`;
+// The plugin's name; humans type /<PLUGIN_NAME>:<action>.
+export const PLUGIN_NAME = 'brick';
 
 const STATUSES = ['drafting', 'approved', 'superseded'];
 const GAP_STATUSES = ['open', 'resolved', 'dismissed'];

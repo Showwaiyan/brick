@@ -75,7 +75,7 @@ test('pageData carries states, commands, counts and history for the page', async
   assert.equal(p.nodes.b1.active_children, 1);
   assert.equal(p.nodes.p1.state, 'drafting');
   assert.deepEqual(p.counts, { approved: 0, drafting: 2, superseded: 0, open_gaps: 0 });
-  assert.ok(p.nodes.p1.next_commands.includes('board approve p1'));
+  assert.ok(p.nodes.p1.next_commands.includes('/brick:approve p1'));
   assert.equal(p.nodes.p1.history[0].action, 'add');
   assert.equal(p.generated_at, 'T');
 });
