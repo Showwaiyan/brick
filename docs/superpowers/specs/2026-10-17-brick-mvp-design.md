@@ -351,7 +351,7 @@ Create `templates/SKILL.md` with exactly this content (fix only the frontmatter 
 ````markdown
 ---
 name: decompose
-description: Use when the user wants to plan, break down or think through something they are going to build, or mentions the brick, the flow, the tree, a gap, or a node. You are a critic and a scribe, never the decision-maker.
+description: Use when the user wants to plan, break down or think through something they are going to build, or mentions the board, the flow, the tree, a gap, or a node. You are a critic and a scribe, never the decision-maker.
 ---
 
 # Decompose with the user
@@ -415,7 +415,7 @@ Required test files and cases:
 - **ai namespace:** `brick ai add` without `--user-said` fails; `brick ai edit` on an approved node fails.
 - **guard bash matrix** (run `brick guard bash` with JSON on stdin, check the exit code): allowed: `brick ls`, `brick ai gap b3 --missing "x"`, `cd x && brick show b1`, `node /p/bin/brick.mjs brief`, `ls -la`, `git status`. Blocked: `brick approve p1`, `a && brick supersede p1 --why x`, `echo $(brick reopen p1)`, `brick gap dismiss g1`, `node /p/bin/brick.mjs approve p1`, `cat .brick/tree.json`, `sed -i s/a/b/ .brick/tree.json`.
 - **guard write:** blocked for `.brick/tree.json` and `/abs/proj/.brick/x`; allowed for `src/store.mjs`.
-- **guard session-start:** prints the brief when a brick exists; prints nothing and exits 0 when none exists; exits 0 even when `tree.json` is corrupt.
+- **guard session-start:** prints the brief when a board exists; prints nothing and exits 0 when none exists; exits 0 even when `tree.json` is corrupt.
 - **init:** in a temp repo with an existing `.claude/settings.json` containing other hooks and other settings, `brick init` keeps every existing entry byte-for-byte in meaning and adds exactly our three; running it twice adds nothing the second time; invalid existing JSON stops with no changes; `.gitignore` gets the `.brick/` line once; the skill is copied, and a differing existing skill is not overwritten without `--update`.
 - **render:** the embedded data cannot break out of the script tag (the `</script>` title test); the output contains no `http://` or `https://` URLs and no `fetch(`; `page.js` has no `innerHTML`; the embedded script passes `node --check`.
 - **demo:** `brick init "User login" --demo` produces data that passes validation and matches section 12.
@@ -465,6 +465,6 @@ Seed it by calling the real command functions (so the demo also exercises the ru
 So you do not design yourself into a corner:
 
 - **Agent roles,** each with its model set per project in `.brick/config.json` (the only source; agent files would be generated from it, for example by a `brick sync-agents` command): the main agent (conversation and scribe), an optional read-only **gap-finder** with fresh context, a blind **test writer**, an **implementer** per leaf (with an optional profile such as `ui`), and a **reviewer**. None of them may write `tree.json`.
-- **Git flow:** a feature branch from main, then one worktree per leaf branching off it, merged back into the feature branch, then into main. Agents in worktrees read the brick through the main checkout (section 4) and cannot write it.
+- **Git flow:** a feature branch from main, then one worktree per leaf branching off it, merged back into the feature branch, then into main. Agents in worktrees read the board through the main checkout (section 4) and cannot write it.
 - **Distribution:** a Claude Code plugin or marketplace entry that wraps the same CLI, and support for other agent clients (their own instruction files and hooks; the CLI, `.brick/` and the page stay the same).
 - Leaf detail with approaches and planned-versus-actual flow, the Kanban view, tickets.
