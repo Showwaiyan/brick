@@ -51,3 +51,11 @@ export function sample() {
     events: [],
   };
 }
+
+// A fresh data folder with an empty board; returns its path.
+export async function newBoard(name = 't') {
+  const { create, emptyData } = await import('../src/store.mjs');
+  const dir = path.join(tmp(), '.board');
+  create(dir, emptyData(name));
+  return dir;
+}
