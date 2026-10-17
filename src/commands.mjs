@@ -5,6 +5,8 @@ import { children } from './model.mjs';
 import { approve, reopen, supersede, restore, closeGap, needNode, nextOrder, blank } from './rules.mjs';
 import { ls, show, log, brief, HELP } from './text.mjs';
 import { initProject } from './init.mjs';
+import { renderFile, renderQuiet } from './render.mjs';
+import { openFile } from './open.mjs';
 
 const T = TOOL_NAME;
 const CONTRACT = ['input', 'output', 'check', 'limits'];
@@ -140,8 +142,15 @@ const MUTATING = {
   },
 };
 
-// Read-only commands. Each takes (data, argv) and returns text.
+// Read-only commands. Each takes (data, argv, dir) and returns text.
 const READING = {
+  render: (data, argv, dir) => `rendered ${renderFile(dir)}`,
+  open(data, argv, dir) {
+    const { values } = parse(argv, { quiet: { type: 'boolean' } }, 'open [--quiet]', 0);
+    const file = renderFile(dir);
+    if (openFile(file)) return values.quiet ? '' : `opened ${file}`;
+    return values.quiet ? '' : `Could not open a browser. The page is here: ${file}`;
+  },
   ls: (data) => ls(data),
   show: (data, argv) => show(data, parse(argv, {}, 'show <id>', 1).positionals[0]),
   log: (data, argv) => log(data, Number(parse(argv, { last: { type: 'string' } }, 'log [--last N]', 0).values.last || 20)),
@@ -151,8 +160,12 @@ const READING = {
 // Runs one command against a data folder. Used by run() and by the demo.
 export function execute(dir, argv, now = new Date().toISOString()) {
   const [cmd, ...rest] = argv;
-  if (MUTATING[cmd]) return mutate(dir, (data) => MUTATING[cmd](data, rest, now));
-  if (READING[cmd]) return READING[cmd](load(dir), rest);
+  if (MUTATING[cmd]) {
+    const result = mutate(dir, (data) => MUTATING[cmd](data, rest, now)); // save first,
+    renderQuiet(dir); // render second: a render failure only warns
+    return result;
+  }
+  if (READING[cmd]) return READING[cmd](load(dir), rest, dir);
   throw new Error(`Unknown command "${cmd}". Run: ${T} help`);
 }
 

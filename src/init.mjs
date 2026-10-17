@@ -4,6 +4,7 @@ import path from 'node:path';
 import { parseArgs } from 'node:util';
 import { findProject, isLinkedWorktree, create, emptyData, TOOL_NAME, DATA_DIR } from './store.mjs';
 import { seedDemo } from './demo.mjs';
+import { renderQuiet } from './render.mjs';
 
 // Creates .board/ with empty data and a default config; optionally seeds the demo.
 export function initProject(cwd, argv) {
@@ -22,5 +23,6 @@ export function initProject(cwd, argv) {
   create(project.dir, emptyData(name, r.values.input || null, r.values.output || null));
   fs.writeFileSync(path.join(project.dir, 'config.json'), JSON.stringify({ openBrowserOnSessionStart: true }, null, 2) + '\n');
   if (r.values.demo) seedDemo(project.dir);
+  renderQuiet(project.dir);
   return `created ${project.dir}${r.values.demo ? ' with the demo project' : ''}`;
 }

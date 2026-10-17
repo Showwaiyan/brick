@@ -1,0 +1,108 @@
+// Builds tree.html: one self-contained file (data + page.js + page.css inlined).
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { load, TOOL_NAME } from './store.mjs';
+import { children, activeChildren, displayState, openGaps, nextCommands } from './model.mjs';
+import { eventsFor } from './text.mjs';
+
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+
+// Short text for an event's detail, shown in the page history.
+function summary(e) {
+  return Object.values(e.detail || {})
+    .filter((v) => v !== null && v !== undefined && v !== '')
+    .map((v) => (Array.isArray(v) ? v.join(', ') : typeof v === 'object' ? JSON.stringify(v) : String(v)))
+    .join(' · ');
+}
+
+// Everything the page needs, with all rules already applied (the page has none).
+export function pageData(data, now) {
+  const nodes = {};
+  for (const n of Object.values(data.nodes)) {
+    const gaps = Object.values(data.gaps).filter((g) => g.node === n.id)
+      .sort((a, b) => (a.status === 'open' ? 0 : 1) - (b.status === 'open' ? 0 : 1) || Number(a.id.slice(1)) - Number(b.id.slice(1)));
+    nodes[n.id] = {
+      id: n.id, kind: n.kind, parent: n.parent, title: n.title, description: n.description,
+      contract: n.contract, source: n.source, said: n.said, superseded: n.superseded,
+      state: displayState(data, n.id),
+      children: children(data, n.id).map((c) => c.id),
+      active_children: activeChildren(data, n.id).length,
+      open_gaps: openGaps(data, n.id).length,
+      gaps: gaps.map((g) => ({
+        id: g.id, missing: g.missing, where: g.where, status: g.status, note: g.note,
+        commands: [`${TOOL_NAME} gap resolve ${g.id} --note "…"`, `${TOOL_NAME} gap dismiss ${g.id} --why "…"`],
+      })),
+      history: eventsFor(data, n.id).slice(0, 10).map((e) => ({ seq: e.seq, at: e.at, actor: e.actor, action: e.action, summary: summary(e) })),
+      next_commands: nextCommands(data, n.id),
+    };
+  }
+  const states = Object.values(nodes).map((n) => n.state);
+  return {
+    project: data.project, generated_at: now, tool: TOOL_NAME,
+    roots: children(data, null).map((n) => n.id), nodes,
+    counts: {
+      approved: states.filter((s) => s === 'approved').length,
+      drafting: Object.values(data.nodes).filter((n) => n.status === 'drafting').length,
+      superseded: states.filter((s) => s === 'superseded').length,
+      open_gaps: Object.values(data.gaps).filter((g) => g.status === 'open').length,
+    },
+  };
+}
+
+// Characters that must not appear raw inside the embedded JSON.
+const LINE_SEP = new RegExp(String.fromCharCode(0x2028), 'g');
+const PARA_SEP = new RegExp(String.fromCharCode(0x2029), 'g');
+
+// Makes JSON safe inside a <script> tag: no "<", no line-separator characters.
+export function safeJson(obj) {
+  return JSON.stringify(obj)
+    .replace(/</g, '\\u003c')
+    .replace(LINE_SEP, '\\u2028')
+    .replace(PARA_SEP, '\\u2029');
+}
+
+// Escapes text for use inside an HTML element (only the <title> needs it).
+const escapeHtml = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+// The whole page as one string.
+export function renderHtml(data, now = new Date().toISOString()) {
+  const css = fs.readFileSync(path.join(HERE, 'page.css'), 'utf8');
+  const js = fs.readFileSync(path.join(HERE, 'page.js'), 'utf8');
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${escapeHtml(data.project.name)} - ${TOOL_NAME}</title>
+<style>
+${css}</style>
+</head>
+<body>
+<div id="app"></div>
+<noscript><p>This page needs JavaScript to draw the board. Run "${TOOL_NAME} ls" for a text view.</p></noscript>
+<script id="data" type="application/json">${safeJson(pageData(data, now))}</script>
+<script>
+${js}</script>
+</body>
+</html>
+`;
+}
+
+// Renders tree.html into the data folder (temp file + rename). Returns its path.
+export function renderFile(dir) {
+  const file = path.join(dir, 'tree.html');
+  const tmp = `${file}.${process.pid}.tmp`;
+  fs.writeFileSync(tmp, renderHtml(load(dir)));
+  fs.renameSync(tmp, file);
+  return file;
+}
+
+// Renders after a save. A failure only warns: the data is already saved.
+export function renderQuiet(dir) {
+  try {
+    renderFile(dir);
+  } catch (e) {
+    console.error(`warning: could not update tree.html (your data is saved): ${e.message}`);
+  }
+}

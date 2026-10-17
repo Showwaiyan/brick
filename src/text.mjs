@@ -22,6 +22,8 @@ Human commands (run these yourself; in Claude Code type them with a leading !):
 
 Read-only (human or AI):
   ${T} ls | ${T} show <id> | ${T} log [--last N] | ${T} brief | ${T} help
+  ${T} render              rebuild .board/tree.html
+  ${T} open [--quiet]      rebuild it and open it in your browser
 `;
 
 // Depth-first list of [node, depth], children in order (superseded stay in place).
