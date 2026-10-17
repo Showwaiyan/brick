@@ -1,6 +1,6 @@
-# Build prompt: `brick` MVP (a decomposition harness for Claude Code)
+# Build prompt: `brick` MVP (command: `board`) (a decomposition harness for Claude Code)
 
-This file is the approved design document for the build. This prompt builds the **tool**. Afterwards the person uses it inside other project repos with `brick init`.
+This file is the approved design document for the build. This prompt builds the **tool**. Afterwards the person uses it inside other project repos with `board init`.
 
 ---
 
@@ -13,28 +13,28 @@ The person you are building this for does not want black boxes. He wants to unde
 3. **No scope creep.** If something is not in section 2 "In scope", do not build it. If you think it is needed, ask first.
 4. **No dependencies.** Node.js 20 or newer, ES modules (`.mjs`), no npm packages at runtime or for tests (use the built-in `node:test`). No build step, no TypeScript, no frameworks.
 5. **Do not rely on memory for Claude Code formats.** Before writing the hook entries for `.claude/settings.json`, the hook input/output handling, or the `SKILL.md` frontmatter, check the current Claude Code documentation (use the `claude-code-guide` agent). If the docs disagree with this prompt, follow the docs and tell me.
-6. **Use these defaults and do not ask about them:** tool name `brick` (one constant `TOOL_NAME` in `src/store.mjs`, used for the command name, the data folder name `.${TOOL_NAME}`, and all messages; a rename is a one-line change), repo root `/Users/showwaiyan/Dev/brick` (files go directly in it), `git init`, one commit per milestone with the prefix `M1:`, `M2:`, and so on. List the defaults you used in your first report.
+6. **Use these defaults and do not ask about them:** command name `board` (one constant `TOOL_NAME` in `src/store.mjs`, used for the command name, the data folder `.${TOOL_NAME}` and all messages; a rename is a one-line change). The package/plugin name is `brick`; `board` is only the command and the everyday word, repo root `/Users/showwaiyan/Dev/brick` (files go directly in it), `git init`, one commit per milestone with the prefix `M1:`, `M2:`, and so on. List the defaults you used in your first report.
 7. **Report format at each stop (max 12 lines):** files added or changed, how to run it, what I should look at, what you were unsure about.
 
 ---
 
 ## 1. What we are building
 
-A command-line tool, `brick`, that keeps a project's breakdown in a file the human owns, shows it as a static web page, and constrains the AI (through hooks and a skill that `brick init` installs into each project) to a critic and scribe role.
+A command-line tool, `board`, that keeps a project's breakdown in a file the human owns, shows it as a static web page, and constrains the AI (through hooks and a skill that `board init` installs into each project) to a critic and scribe role.
 
-The idea in one paragraph: when an engineer builds something with AI, the chat is linear text and the AI tends to decide everything. Here, the **human** decides how the problem is broken down. The AI asks questions, **names what is missing (never how to fix it)**, and records what the human decided. The state lives in `.brick/tree.json`, written only by code. A static page, `.brick/tree.html`, shows the current state. The human decides in the terminal.
+The idea in one paragraph: when an engineer builds something with AI, the chat is linear text and the AI tends to decide everything. Here, the **human** decides how the problem is broken down. The AI asks questions, **names what is missing (never how to fix it)**, and records what the human decided. The state lives in `.board/tree.json`, written only by code. A static page, `.board/tree.html`, shows the current state. The human decides in the terminal.
 
-It is **per project**: all state, hooks and the skill live in the project's repo. The `brick` command itself is installed once on the machine (`npm link`).
+It is **per project**: all state, hooks and the skill live in the project's repo. The `board` command itself is installed once on the machine (`npm link`).
 
 ### Non-negotiable rules (every one must be enforced by code where code can enforce it)
 
 | # | Rule | Where it is enforced |
 |---|------|----------------------|
-| R1 | Only the human approves, supersedes, reopens, resolves or dismisses. | CLI split (`brick ai` namespace has none of these) + Bash guard hook |
-| R2 | The AI never edits `.brick/` files directly. | Write/Edit guard hook + Bash guard hook |
+| R1 | Only the human approves, supersedes, reopens, resolves or dismisses. | CLI split (`board ai` namespace has none of these) + Bash guard hook |
+| R2 | The AI never edits `.board/` files directly. | Write/Edit guard hook + Bash guard hook |
 | R3 | Nothing is ever deleted. A removed node is marked **superseded** with a required reason, and stays on the page, dimmed. | No delete command exists; supersede requires `--why` |
-| R4 | A gap states **what is missing**, never **how to fill it**. | `brick ai gap` has no "fix" field + a phrase lint (a speed bump, not a guarantee) + the skill |
-| R5 | The AI cannot critique a node until the human has authored content for it. | "Ask-first gate" in `brick ai gap` |
+| R4 | A gap states **what is missing**, never **how to fill it**. | `board ai gap` has no "fix" field + a phrase lint (a speed bump, not a guarantee) + the skill |
+| R5 | The AI cannot critique a node until the human has authored content for it. | "Ask-first gate" in `board ai gap` |
 | R6 | The AI never says "ready", "approved", "complete" or "looks good". It may only report "I found no gaps in this". | Skill text (cannot be enforced in code; say so in the README) |
 | R7 | The page is read-only, static, works offline from `file://`, and is regenerated by code on every change. | Renderer |
 
@@ -44,11 +44,11 @@ It is **per project**: all state, hooks and the skill live in the project's repo
 
 ### In scope (MVP)
 - The data model and store, including finding the main checkout from any git worktree (sections 3 and 4).
-- The CLI: human commands, the `brick ai` commands, and `brick init` with project setup (section 5).
+- The CLI: human commands, the `board ai` commands, and `board init` with project setup (section 5).
 - The rules in code (section 6).
 - The static page with **Flow view** and **Tree view** and a **node detail panel** (section 7).
-- The guards, as hidden `brick guard ...` commands called by thin hook entries in the project's `.claude/settings.json` (section 8).
-- One skill, `decompose`, copied into each project by `brick init` (section 9).
+- The guards, as hidden `board guard ...` commands called by thin hook entries in the project's `.claude/settings.json` (section 8).
+- One skill, `decompose`, copied into each project by `board init` (section 9).
 - Tests (section 10) and a README.
 
 ### Out of scope (do NOT build; do not add fields for them either, except the ones named "reserved")
@@ -62,24 +62,24 @@ Reserved (name only, do not use): `domain` on every node (always `"software"`), 
 
 ```
 <repo root>/
-  package.json               name "brick", type "module", "bin": {"brick": "bin/brick.mjs"},
+  package.json               name "brick", type "module", "bin": {"board": "bin/board.mjs"},
                              engines node >=20, scripts.test = "node --test", no dependencies
-  bin/brick.mjs              thin entry: parse argv, call a command
+  bin/board.mjs              thin entry: parse argv, call a command
   src/
     store.mjs                find the main checkout, load, validate, atomic save, lock, append event
     model.mjs                derived fields: children, isLeaf, openGaps, displayState, nextCommands
     rules.mjs                approve, reopen, supersede, restore, gap lint, ask-first gate
     commands.mjs             one function per command, returns a short result string
-    init.mjs                 brick init / --update: create .brick/, .gitignore line, settings merge, skill copy
-    guard.mjs                the three guards as functions, called by `brick guard ...`
-    text.mjs                 `brick ls` and `brick brief` output
+    init.mjs                 board init / --update: create .board/, .gitignore line, settings merge, skill copy
+    guard.mjs                the three guards as functions, called by `board guard ...`
+    text.mjs                 `board ls` and `board brief` output
     open.mjs                 open a file in the default browser (never throws)
     render.mjs               builds tree.html from data + page.js + page.css
     page.js                  classic script that draws the page (no modules, no fetch)
     page.css
     demo.mjs                 seeds the demo project through the real commands
   templates/
-    SKILL.md                 copied to <project>/.claude/skills/decompose/SKILL.md by brick init
+    SKILL.md                 copied to <project>/.claude/skills/decompose/SKILL.md by board init
   test/*.test.mjs
   README.md
 ```
@@ -88,17 +88,17 @@ Reserved (name only, do not use): `domain` on every node (always `"software"`), 
 
 ---
 
-## 4. Data model: `.brick/tree.json`
+## 4. Data model: `.board/tree.json`
 
 ### Finding the project (`store.mjs`)
 
-- **Inside a git repo:** run `git rev-parse --git-common-dir`, resolve it against the current directory, and take its parent folder as the **main checkout**. The data is `<main checkout>/.brick/`. This makes every git worktree of the repo use the same `.brick/`.
-- **Not a git repo, or git is missing:** walk up from the current directory until a `.brick/` folder is found.
-- `.brick/` is **gitignored**, so new worktrees never contain a copy. If a `.brick/` folder is found inside a linked worktree (not the main checkout), ignore it and print one warning line.
-- `brick init` refuses to run inside a linked worktree (when `git rev-parse --git-dir` differs from `--git-common-dir`). Message: `Run brick init in the main checkout: <path>`.
-- Because `.brick/` is not in git, its event log is the only history. The README must say: back it up if you care about it.
+- **Inside a git repo:** run `git rev-parse --git-common-dir`, resolve it against the current directory, and take its parent folder as the **main checkout**. The data is `<main checkout>/.board/`. This makes every git worktree of the repo use the same `.board/`.
+- **Not a git repo, or git is missing:** walk up from the current directory until a `.board/` folder is found.
+- `.board/` is **gitignored**, so new worktrees never contain a copy. If a `.board/` folder is found inside a linked worktree (not the main checkout), ignore it and print one warning line.
+- `board init` refuses to run inside a linked worktree (when `git rev-parse --git-dir` differs from `--git-common-dir`). Message: `Run board init in the main checkout: <path>`.
+- Because `.board/` is not in git, its event log is the only history. The README must say: back it up if you care about it.
 
-### Files inside `.brick/`
+### Files inside `.board/`
 - `tree.json`: the data (source of truth)
 - `tree.html`: generated, never edited by hand
 - `config.json`: `{ "openBrowserOnSessionStart": true }`
@@ -149,12 +149,12 @@ There is no global config. Everything is per project.
 - **ids**: `b<N>` for boxes, `p<N>` for problems, `g<N>` for gaps. Counters only go up; ids are never reused.
 - **`order`**: integer position among siblings (1-based). Inserting with `--after <id>` renumbers the later siblings.
 - **`status`** (stored): `drafting` | `approved` | `superseded`.
-- **`source`**: `"human"` (typed by the human with a top-level command) or `"ai-scribe"` (recorded by the AI with `brick ai add`).
-- **`said`**: array of strings. For `ai-scribe` nodes, the human's own words that justify the node, as given in `--user-said`. Appended on every `brick ai edit`. Empty for `human` nodes.
+- **`source`**: `"human"` (typed by the human with a top-level command) or `"ai-scribe"` (recorded by the AI with `board ai add`).
+- **`said`**: array of strings. For `ai-scribe` nodes, the human's own words that justify the node, as given in `--user-said`. Appended on every `board ai edit`. Empty for `human` nodes.
 - **`contract`**: all four fields are free text or `null`. Boxes normally use only `input` and `output`. Problems that are leaves need `input`, `output`, `check` to be approved (see section 6, approve).
 - **`superseded`**: `null`, or `{ "reason": string, "by": id|null, "cascade_from": id|null, "at": string }`.
 - **gap `status`**: `open` | `resolved` | `dismissed`. `where` is an optional free-text location such as "between b2 and b3".
-- **events**: append-only. `actor` is `"human"` (top-level commands) or `"ai"` (`brick ai` commands). Never edited or removed.
+- **events**: append-only. `actor` is `"human"` (top-level commands) or `"ai"` (`board ai` commands). Never edited or removed.
 
 ### Derived values (computed in `model.mjs`, never stored)
 
@@ -166,7 +166,7 @@ There is no global config. Everything is per project.
 
 ### Writing safely
 
-- Every write: take `.brick/.lock` (create with the exclusive flag, retry up to 5 times over 1 second, treat a lock older than 10 seconds as stale), validate the whole file, write to a temp file in `.brick/`, fsync, rename over `tree.json`, release the lock.
+- Every write: take `.board/.lock` (create with the exclusive flag, retry up to 5 times over 1 second, treat a lock older than 10 seconds as stale), validate the whole file, write to a temp file in `.board/`, fsync, rename over `tree.json`, release the lock.
 - **Save first, render second.** If rendering fails, keep the saved data, print a warning, exit 0.
 - Validation checks: unique ids; parents exist; no cycles; box has `parent: null`; problem parent is a box or problem; `order` unique among siblings; every gap points to an existing node; every event has the next `seq`; `status` and `superseded` agree.
 
@@ -174,58 +174,58 @@ There is no global config. Everything is per project.
 
 ## 5. Commands
 
-Run as `brick <command>`. Top-level commands are **human**. The `ai` namespace is **AI**. Every mutating command: appends an event, saves, then re-renders `tree.html`, then prints one short line such as `approved p3` or `added p4 under b3`. Errors go to stderr with exit code 1 and say what to do instead.
+Run as `board <command>`. Top-level commands are **human**. The `ai` namespace is **AI**. Every mutating command: appends an event, saves, then re-renders `tree.html`, then prints one short line such as `approved p3` or `added p4 under b3`. Errors go to stderr with exit code 1 and say what to do instead.
 
 ### Human commands (the AI is blocked from these by the Bash guard)
 
 | Command | Effect |
 |---|---|
-| `brick init "<name>" [--input "<text>"] [--output "<text>"] [--demo]` | Create `.brick/` (empty data, default `config.json`) and set up the project (see below). Fails if `.brick/` already exists. `--demo` seeds the demo project (section 12). |
-| `brick init --update` | In an existing project: re-merge the hook entries and re-copy the skill. Never touches `tree.json`. |
-| `brick add box\|problem "<title>" [--parent <id>] [--after <id>] [--desc ".."] [--input ".."] [--output ".."] [--check ".."] [--limits ".."]` | Add a node (`source: "human"`). Boxes take no `--parent`. Problems require one. |
-| `brick edit <id> [--title ..] [--desc ..] [--input ..] [--output ..] [--check ..] [--limits ..]` | Edit a **drafting** node. Refuse on `approved` or `superseded` nodes. |
-| `brick project [--name ..] [--input ..] [--output ..]` | Edit the project name or its overall input/output. Use `""` to clear input or output. |
-| `brick approve <id>` | Approve (rules in section 6). |
-| `brick reopen <id> --why "<reason>"` | `approved` back to `drafting`. Reason is required and logged. |
-| `brick supersede <id> --why "<reason>" [--by <id>]` | Mark superseded (rules in section 6). |
-| `brick restore <id>` | Undo a supersede (rules in section 6). |
-| `brick gap resolve <gapId> --note "<text>"` | Human says the gap is handled. |
-| `brick gap dismiss <gapId> --why "<text>"` | Human says the gap is not a real gap. |
+| `board init "<name>" [--input "<text>"] [--output "<text>"] [--demo]` | Create `.board/` (empty data, default `config.json`) and set up the project (see below). Fails if `.board/` already exists. `--demo` seeds the demo project (section 12). |
+| `board init --update` | In an existing project: re-merge the hook entries and re-copy the skill. Never touches `tree.json`. |
+| `board add box\|problem "<title>" [--parent <id>] [--after <id>] [--desc ".."] [--input ".."] [--output ".."] [--check ".."] [--limits ".."]` | Add a node (`source: "human"`). Boxes take no `--parent`. Problems require one. |
+| `board edit <id> [--title ..] [--desc ..] [--input ..] [--output ..] [--check ..] [--limits ..]` | Edit a **drafting** node. Refuse on `approved` or `superseded` nodes. |
+| `board project [--name ..] [--input ..] [--output ..]` | Edit the project name or its overall input/output. Use `""` to clear input or output. |
+| `board approve <id>` | Approve (rules in section 6). |
+| `board reopen <id> --why "<reason>"` | `approved` back to `drafting`. Reason is required and logged. |
+| `board supersede <id> --why "<reason>" [--by <id>]` | Mark superseded (rules in section 6). |
+| `board restore <id>` | Undo a supersede (rules in section 6). |
+| `board gap resolve <gapId> --note "<text>"` | Human says the gap is handled. |
+| `board gap dismiss <gapId> --why "<text>"` | Human says the gap is not a real gap. |
 
-### What `brick init` does (project setup)
+### What `board init` does (project setup)
 
-Done after `.brick/` is created. Each step is idempotent and reports one line:
-1. **`.gitignore`:** add the line `.brick/` to `<main checkout>/.gitignore` if it is not already there (create the file if needed).
+Done after `.board/` is created. Each step is idempotent and reports one line:
+1. **`.gitignore`:** add the line `.board/` to `<main checkout>/.gitignore` if it is not already there (create the file if needed).
 2. **Hooks:** merge three entries into `<main checkout>/.claude/settings.json` (create the file and folder if needed). Read and parse the existing JSON first. **Never remove, reorder or overwrite existing entries.** Add each of ours only if an entry with the same command string is not already present. If the existing file is not valid JSON, stop, change nothing, and tell the human. Keep 2-space indentation. The three entries (verify the exact settings format in the docs):
-   - PreToolUse, matcher `Bash`: command `brick guard bash`
-   - PreToolUse, matcher `Write|Edit|MultiEdit|NotebookEdit`: command `brick guard write`
-   - SessionStart: command `brick guard session-start`
-3. **Skill:** copy `templates/SKILL.md` to `<main checkout>/.claude/skills/decompose/SKILL.md`. If that file exists and differs, do not overwrite it unless `--update` was given; print `skill differs; run brick init --update to replace it`.
-4. **PATH check:** run `brick help` through the shell; if `brick` is not found on the PATH, print a warning that the hooks will not work until it is (a hook whose command is not found does not block anything, so the guards would silently be off).
+   - PreToolUse, matcher `Bash`: command `board guard bash`
+   - PreToolUse, matcher `Write|Edit|MultiEdit|NotebookEdit`: command `board guard write`
+   - SessionStart: command `board guard session-start`
+3. **Skill:** copy `templates/SKILL.md` to `<main checkout>/.claude/skills/decompose/SKILL.md`. If that file exists and differs, do not overwrite it unless `--update` was given; print `skill differs; run board init --update to replace it`.
+4. **PATH check:** run `board help` through the shell; if `board` is not found on the PATH, print a warning that the hooks will not work until it is (a hook whose command is not found does not block anything, so the guards would silently be off).
 
 ### AI commands (the only mutating commands the AI may run)
 
 | Command | Effect |
 |---|---|
-| `brick ai add box\|problem --title "<t>" --user-said "<quote>" [--parent <id>] [--after <id>] [--desc ..] [--input ..] [--output ..] [--check ..] [--limits ..]` | Add a **drafting** node with `source: "ai-scribe"`. `--user-said` is required, non-empty, max 400 characters; store it in `said`. |
-| `brick ai edit <id> --user-said "<quote>" [--title ..] [--desc ..] [--input ..] [--output ..] [--check ..] [--limits ..]` | Edit a **drafting** node only. Appends the quote to `said`. |
-| `brick ai project --user-said "<quote>" [--input ..] [--output ..]` | Set the project's overall input/output from the human's words. |
-| `brick ai gap <nodeId> --missing "<what is missing>" [--where "<location>"]` | Raise a gap. Subject to the ask-first gate and the lint in section 6. There is no field for a fix. |
+| `board ai add box\|problem --title "<t>" --user-said "<quote>" [--parent <id>] [--after <id>] [--desc ..] [--input ..] [--output ..] [--check ..] [--limits ..]` | Add a **drafting** node with `source: "ai-scribe"`. `--user-said` is required, non-empty, max 400 characters; store it in `said`. |
+| `board ai edit <id> --user-said "<quote>" [--title ..] [--desc ..] [--input ..] [--output ..] [--check ..] [--limits ..]` | Edit a **drafting** node only. Appends the quote to `said`. |
+| `board ai project --user-said "<quote>" [--input ..] [--output ..]` | Set the project's overall input/output from the human's words. |
+| `board ai gap <nodeId> --missing "<what is missing>" [--where "<location>"]` | Raise a gap. Subject to the ask-first gate and the lint in section 6. There is no field for a fix. |
 
 ### Read-only commands (human or AI)
 
 | Command | Output |
 |---|---|
-| `brick ls` | The tree as indented text: id, title, display state, open-gap count. Superseded nodes are shown with `(superseded)`. |
-| `brick show <id>` | One node in full: fields, `said`, gaps, supersede info, last 10 events for it, and its next commands. |
-| `brick log [--last N]` | The event log, newest first (default 20). |
-| `brick brief` | A 5-line summary: project name, node counts by state, open gaps, and the next suggested human command. |
-| `brick render` | Regenerate `tree.html` from `tree.json`. |
-| `brick open [--quiet]` | Render, then open `tree.html` in the default browser. If that fails (no browser, SSH), print the absolute path and exit 0. |
-| `brick help` | Usage, split into human and AI sections. Does not list `guard`. |
+| `board ls` | The tree as indented text: id, title, display state, open-gap count. Superseded nodes are shown with `(superseded)`. |
+| `board show <id>` | One node in full: fields, `said`, gaps, supersede info, last 10 events for it, and its next commands. |
+| `board log [--last N]` | The event log, newest first (default 20). |
+| `board brief` | A 5-line summary: project name, node counts by state, open gaps, and the next suggested human command. |
+| `board render` | Regenerate `tree.html` from `tree.json`. |
+| `board open [--quiet]` | Render, then open `tree.html` in the default browser. If that fails (no browser, SSH), print the absolute path and exit 0. |
+| `board help` | Usage, split into human and AI sections. Does not list `guard`. |
 
 ### Hidden commands (called by hooks, not by people or the AI)
-`brick guard bash`, `brick guard write`, `brick guard session-start`: read the hook JSON from stdin and act as described in section 8. Not shown in `brick help`.
+`board guard bash`, `board guard write`, `board guard session-start`: read the hook JSON from stdin and act as described in section 8. Not shown in `board help`.
 
 ---
 
@@ -251,7 +251,7 @@ A `box` with no children can be approved with just a title (the human chose to l
 
 **restore(id)**, human only: allowed only when the node was superseded directly (`cascade_from` is `null`) and its parent is not superseded. Restores the node and everything with `cascade_from == id` to `drafting` (never to `approved`). Logged.
 
-**ask-first gate** for `brick ai gap <nodeId>`: refuse unless the node has `source == "human"` or a non-empty `said`. Message: `This node has no content from the user yet. Ask the user for their own attempt first.` Also refuse gaps on superseded nodes.
+**ask-first gate** for `board ai gap <nodeId>`: refuse unless the node has `source == "human"` or a non-empty `said`. Message: `This node has no content from the user yet. Ask the user for their own attempt first.` Also refuse gaps on superseded nodes.
 
 **gap lint** for `--missing`:
 - Required, 8 to 300 characters, single line.
@@ -288,7 +288,7 @@ One self-contained HTML file.
   5. Gaps: open first; each shows its id, text, and the commands to resolve or dismiss.
   6. If superseded: reason, `by`, and whether it cascaded from a parent.
   7. History: this node's last 10 events.
-  8. **Next commands:** the exact commands, in a mono chip, for example `brick approve p3`.
+  8. **Next commands:** the exact commands, in a mono chip, for example `board approve p3`.
 
 ### Visual tokens
 | Thing | Value |
@@ -304,49 +304,49 @@ One self-contained HTML file.
 Color is never the only signal: every state also has a text label. Body text 15px or larger, labels no smaller than 13px, text contrast at least 4.5:1 (dimmed superseded cards are the one exception).
 
 ### `nextCommands(id)` (in `model.mjs`)
-- `drafting`, no open gaps: `brick approve <id>`
-- `drafting`, open gaps: for each, `brick gap resolve <g> --note "…"` and `brick gap dismiss <g> --why "…"`
-- `drafting`: also `brick edit <id> --title "…"`
-- `approved`: `brick reopen <id> --why "…"`
-- not superseded: `brick supersede <id> --why "…"`
-- superseded with `cascade_from == null`: `brick restore <id>`
+- `drafting`, no open gaps: `board approve <id>`
+- `drafting`, open gaps: for each, `board gap resolve <g> --note "…"` and `board gap dismiss <g> --why "…"`
+- `drafting`: also `board edit <id> --title "…"`
+- `approved`: `board reopen <id> --why "…"`
+- not superseded: `board supersede <id> --why "…"`
+- superseded with `cascade_from == null`: `board restore <id>`
 
 ---
 
 ## 8. Guards
 
-The guards are logic inside the CLI (`src/guard.mjs`), run by hidden commands `brick guard ...`. The project's `.claude/settings.json` holds only the thin entries that call them (written by `brick init`, section 5). That way the guard logic never goes stale in old projects. Verify the exact hook settings format and the hook input/output contract in the Claude Code docs first (exit code 2 with a message on stderr blocks a tool call).
+The guards are logic inside the CLI (`src/guard.mjs`), run by hidden commands `board guard ...`. The project's `.claude/settings.json` holds only the thin entries that call them (written by `board init`, section 5). That way the guard logic never goes stale in old projects. Verify the exact hook settings format and the hook input/output contract in the Claude Code docs first (exit code 2 with a message on stderr blocks a tool call).
 
-### 8.1 `brick guard bash` (PreToolUse, matcher `Bash`)
-Reads the hook JSON from stdin. Takes `tool_input.command`. Find **every** occurrence in the string (so `a && brick approve p1` and `$(brick approve p1)` are caught) of:
+### 8.1 `board guard bash` (PreToolUse, matcher `Bash`)
+Reads the hook JSON from stdin. Takes `tool_input.command`. Find **every** occurrence in the string (so `a && board approve p1` and `$(board approve p1)` are caught) of:
 
 ```
-(^|[\s;&|(`$"'])(?:\S*/)?brick(?:\.mjs)?\s+([A-Za-z-]+)(?:\s+([A-Za-z-]+))?
+(^|[\s;&|(`$"'])(?:\S*/)?board(?:\.mjs)?\s+([A-Za-z-]+)(?:\s+([A-Za-z-]+))?
 ```
 Each occurrence must be allowed, else block. Allowed:
 - first word in `ls`, `show`, `log`, `brief`, `render`, `open`, `help`
 - first word `ai` and second word in `add`, `edit`, `gap`, `project`
 
-Also block when the command text contains `.brick/` anywhere (reads must go through `brick show` or `brick ls`).
+Also block when the command text contains `.board/` anywhere (reads must go through `board show` or `board ls`).
 
-The block message (stderr, exit 2) must tell the model what to do: `This is a human-only command. Ask the user to run: brick <the command>. Do not run it yourself.`
+The block message (stderr, exit 2) must tell the model what to do: `This is a human-only command. Ask the user to run: board <the command>. Do not run it yourself.`
 
-If the command contains no match and no `.brick/`, exit 0 with no output.
+If the command contains no match and no `.board/`, exit 0 with no output.
 
-### 8.2 `brick guard write` (PreToolUse, matcher `Write|Edit|MultiEdit|NotebookEdit`)
-Block when the resolved `file_path` has a `.brick` path segment (this covers worktrees too). Message: `.brick/ is written only by the brick command. Use brick ai ... instead.`
+### 8.2 `board guard write` (PreToolUse, matcher `Write|Edit|MultiEdit|NotebookEdit`)
+Block when the resolved `file_path` has a `.board` path segment (this covers worktrees too). Message: `.board/ is written only by the board command. Use board ai ... instead.`
 
-### 8.3 `brick guard session-start` (SessionStart)
-If a `.brick/tree.json` exists (found as in section 4): print `brick brief` to stdout (so the session starts knowing the state), and if `config.openBrowserOnSessionStart` is true, run the equivalent of `brick open --quiet`. If no brick exists, print nothing. Never fail the session: any error exits 0.
+### 8.3 `board guard session-start` (SessionStart)
+If a `.board/tree.json` exists (found as in section 4): print `board brief` to stdout (so the session starts knowing the state), and if `config.openBrowserOnSessionStart` is true, run the equivalent of `board open --quiet`. If no board exists, print nothing. Never fail the session: any error exits 0.
 
 ### Honest limit (write this in the README)
-These guards stop accidents and drift. They are not a security boundary: a determined model could obfuscate a command. They also do not run for commands the human types themselves, which is intended: the human runs human-only commands in a separate terminal, or in Claude Code with the `!` prefix (for example `!brick approve p3`). If `brick` is not on the PATH, the hooks silently do nothing, which is why `brick init` checks for it.
+These guards stop accidents and drift. They are not a security boundary: a determined model could obfuscate a command. They also do not run for commands the human types themselves, which is intended: the human runs human-only commands in a separate terminal, or in Claude Code with the `!` prefix (for example `!board approve p3`). If `board` is not on the PATH, the hooks silently do nothing, which is why `board init` checks for it.
 
 ---
 
 ## 9. The skill: `templates/SKILL.md`
 
-Create `templates/SKILL.md` with exactly this content (fix only the frontmatter format if the docs require it). `brick init` copies it into each project.
+Create `templates/SKILL.md` with exactly this content (fix only the frontmatter format if the docs require it). `board init` copies it into each project.
 
 ````markdown
 ---
@@ -359,20 +359,20 @@ description: Use when the user wants to plan, break down or think through someth
 The user decides how the problem is broken down. You ask questions, name what is missing, and record what the user decided. You never decide for them.
 
 ## What you can run
-- `brick ai add`, `brick ai edit`, `brick ai project`, `brick ai gap`
-- `brick ls`, `brick show <id>`, `brick brief`, `brick log`
-You cannot approve, reopen, supersede, restore, resolve or dismiss. Those are the user's commands. When one is needed, give the exact command and stop. Never edit anything inside `.brick/`.
-If there is no `.brick/` folder, ask the user to run `brick init "<name>"` and wait.
+- `board ai add`, `board ai edit`, `board ai project`, `board ai gap`
+- `board ls`, `board show <id>`, `board brief`, `board log`
+You cannot approve, reopen, supersede, restore, resolve or dismiss. Those are the user's commands. When one is needed, give the exact command and stop. Never edit anything inside `.board/`.
+If there is no `.board/` folder, ask the user to run `board init "<name>"` and wait.
 
 ## Step 1: the flow
-1. Ask the user to describe the thing in their own words. Record it with `brick ai project` (input and output may be empty; some things have none).
+1. Ask the user to describe the thing in their own words. Record it with `board ai project` (input and output may be empty; some things have none).
 2. Pull the flow out of them with questions, one at a time: "What has to be true before the user is logged in?", "What comes in? What goes out?"
-3. When the user states a step, record it with `brick ai add box --user-said "<their words>"`. Use their words, not yours. Then say the id and the one-line title so they can check the page.
+3. When the user states a step, record it with `board ai add box --user-said "<their words>"`. Use their words, not yours. Then say the id and the one-line title so they can check the page.
 4. Do not propose boxes. If they ask for your suggestion, see "When the user asks for your suggestion".
 
 ## Step 2: breaking a box down
 1. Ask which box they want to break down, now or later. Leaving a box whole is a valid choice.
-2. Ask for their breakdown first. Record each sub-problem with `brick ai add problem --parent <id> --user-said "<their words>"`.
+2. Ask for their breakdown first. Record each sub-problem with `board ai add problem --parent <id> --user-said "<their words>"`.
 3. A leaf is small enough when the user can state its input, its output and how to check it in one or two sentences, and could review the result in a few minutes. Say whether it passes this test as an observation. Do not call it ready.
 
 ## Naming gaps
@@ -382,14 +382,14 @@ First check that the user has written something for the node. Then look for:
 - an assumption hidden in a step
 - two pieces that share state but were split apart
 - an empty, error, or limit case that nothing covers
-Record each with `brick ai gap <id> --missing "<what is missing>"`. Say what is missing, not how to fill it.
+Record each with `board ai gap <id> --missing "<what is missing>"`. Say what is missing, not how to fill it.
 Good: "Nothing says what happens when the username does not exist."
 Good: "Check password assumes a user record exists, but nothing guarantees it."
 Bad: "You should add a not-found response." (that is the fix)
 If one sentence both names the gap and gives the answer, rewrite it so it only names the gap.
 
 ## Words you never use
-"ready", "approved", "complete", "done", "looks good", "nothing is missing". If you find no gaps, say exactly: "I found no gaps in this." and then: "Only you can approve it: `brick approve <id>`."
+"ready", "approved", "complete", "done", "looks good", "nothing is missing". If you find no gaps, say exactly: "I found no gaps in this." and then: "Only you can approve it: `board approve <id>`."
 Do not flatter the plan. If something is wrong or weak, name it.
 
 ## When the user asks for your suggestion
@@ -409,16 +409,16 @@ Do not write implementation code, tickets, or tests. The tree holds only what th
 Required test files and cases:
 
 - **store:** atomic write leaves no temp file; invalid data is rejected before writing; a stale lock is taken over; ids are never reused after a supersede.
-- **finding the project:** in a temp git repo, `.brick/` is found from a subfolder; from a **linked worktree** (`git worktree add`) it resolves to the main checkout's `.brick/`; in a folder with no git it walks up; a `.brick/` inside a linked worktree is ignored with a warning; `brick init` refuses inside a linked worktree.
+- **finding the project:** in a temp git repo, `.board/` is found from a subfolder; from a **linked worktree** (`git worktree add`) it resolves to the main checkout's `.board/`; in a folder with no git it walks up; a `.board/` inside a linked worktree is ignored with a warning; `board init` refuses inside a linked worktree.
 - **rules:** every approve refusal (not drafting, open gap, unapproved child, leaf missing `check`) and the success cases; supersede cascades to descendants, dismisses their gaps, reopens an approved parent, rejects empty `--why`, rejects a `--by` of another kind; restore only for direct supersedes; reopen needs `--why`; `edit` refuses approved nodes.
-- **gate and lint:** `brick ai gap` refused on a node with no human content; accepted after `brick ai add --user-said`; each lint pattern rejects; the three good example sentences from section 9 pass; the bad example is rejected.
-- **ai namespace:** `brick ai add` without `--user-said` fails; `brick ai edit` on an approved node fails.
-- **guard bash matrix** (run `brick guard bash` with JSON on stdin, check the exit code): allowed: `brick ls`, `brick ai gap b3 --missing "x"`, `cd x && brick show b1`, `node /p/bin/brick.mjs brief`, `ls -la`, `git status`. Blocked: `brick approve p1`, `a && brick supersede p1 --why x`, `echo $(brick reopen p1)`, `brick gap dismiss g1`, `node /p/bin/brick.mjs approve p1`, `cat .brick/tree.json`, `sed -i s/a/b/ .brick/tree.json`.
-- **guard write:** blocked for `.brick/tree.json` and `/abs/proj/.brick/x`; allowed for `src/store.mjs`.
+- **gate and lint:** `board ai gap` refused on a node with no human content; accepted after `board ai add --user-said`; each lint pattern rejects; the three good example sentences from section 9 pass; the bad example is rejected.
+- **ai namespace:** `board ai add` without `--user-said` fails; `board ai edit` on an approved node fails.
+- **guard bash matrix** (run `board guard bash` with JSON on stdin, check the exit code): allowed: `board ls`, `board ai gap b3 --missing "x"`, `cd x && board show b1`, `node /p/bin/board.mjs brief`, `ls -la`, `git status`. Blocked: `board approve p1`, `a && board supersede p1 --why x`, `echo $(board reopen p1)`, `board gap dismiss g1`, `node /p/bin/board.mjs approve p1`, `cat .board/tree.json`, `sed -i s/a/b/ .board/tree.json`.
+- **guard write:** blocked for `.board/tree.json` and `/abs/proj/.board/x`; allowed for `src/store.mjs`.
 - **guard session-start:** prints the brief when a board exists; prints nothing and exits 0 when none exists; exits 0 even when `tree.json` is corrupt.
-- **init:** in a temp repo with an existing `.claude/settings.json` containing other hooks and other settings, `brick init` keeps every existing entry byte-for-byte in meaning and adds exactly our three; running it twice adds nothing the second time; invalid existing JSON stops with no changes; `.gitignore` gets the `.brick/` line once; the skill is copied, and a differing existing skill is not overwritten without `--update`.
+- **init:** in a temp repo with an existing `.claude/settings.json` containing other hooks and other settings, `board init` keeps every existing entry byte-for-byte in meaning and adds exactly our three; running it twice adds nothing the second time; invalid existing JSON stops with no changes; `.gitignore` gets the `.board/` line once; the skill is copied, and a differing existing skill is not overwritten without `--update`.
 - **render:** the embedded data cannot break out of the script tag (the `</script>` title test); the output contains no `http://` or `https://` URLs and no `fetch(`; `page.js` has no `innerHTML`; the embedded script passes `node --check`.
-- **demo:** `brick init "User login" --demo` produces data that passes validation and matches section 12.
+- **demo:** `board init "User login" --demo` produces data that passes validation and matches section 12.
 
 Run the full suite at the end of every milestone and report the result.
 
@@ -429,15 +429,15 @@ Run the full suite at the end of every milestone and report the result.
 | # | Build | Done when |
 |---|---|---|
 | **M1** | `package.json`, `store.mjs` (including finding the main checkout from worktrees), `model.mjs`, the schema validation, events. No CLI yet. | Store, model and finding-the-project tests pass. I can read a 40-line summary of the data flow. |
-| **M2** | `rules.mjs`, `commands.mjs`, `bin/brick.mjs`, human commands, `ls`, `show`, `log`, `brief`, `demo.mjs`, and a basic `brick init` that only creates `.brick/` (and seeds `--demo`). | After `npm link`, I can run `brick init "User login" --demo`, then `brick ls`, and try `approve`, `supersede` and `restore` by hand. All rules tests pass. |
-| **M3** | `render.mjs`, `page.js`, `page.css`, `brick render`, `brick open`. | I open the demo page: Flow and Tree views, dimmed superseded nodes, the detail panel, the `Last updated` line. Render tests pass. Tell me what you could not check visually. |
-| **M4** | The `brick ai` namespace, the ask-first gate, the gap lint. | AI-namespace and gate/lint tests pass. |
-| **M5** | `guard.mjs` and the three `brick guard` commands, `templates/SKILL.md`, and the full `brick init` setup (`.gitignore`, settings merge, skill copy, PATH check, `--update`). | The guard matrix and init tests pass. In a fresh git repo I run `brick init "x"`, start Claude Code there, and see the guard block `brick approve p1` when the AI runs it. |
+| **M2** | `rules.mjs`, `commands.mjs`, `bin/board.mjs`, human commands, `ls`, `show`, `log`, `brief`, `demo.mjs`, and a basic `board init` that only creates `.board/` (and seeds `--demo`). | After `npm link`, I can run `board init "User login" --demo`, then `board ls`, and try `approve`, `supersede` and `restore` by hand. All rules tests pass. |
+| **M3** | `render.mjs`, `page.js`, `page.css`, `board render`, `board open`. | I open the demo page: Flow and Tree views, dimmed superseded nodes, the detail panel, the `Last updated` line. Render tests pass. Tell me what you could not check visually. |
+| **M4** | The `board ai` namespace, the ask-first gate, the gap lint. | AI-namespace and gate/lint tests pass. |
+| **M5** | `guard.mjs` and the three `board guard` commands, `templates/SKILL.md`, and the full `board init` setup (`.gitignore`, settings merge, skill copy, PATH check, `--update`). | The guard matrix and init tests pass. In a fresh git repo I run `board init "x"`, start Claude Code there, and see the guard block `board approve p1` when the AI runs it. |
 | **M6** | README (quickstart, command lists, honest limits, out-of-scope list) and a dry run. | A scripted walk through the User login example in a real Claude Code session, with your notes on where the AI stayed in role and where it slipped. |
 
 ---
 
-## 12. Demo data (`brick init "User login" --demo`)
+## 12. Demo data (`board init "User login" --demo`)
 
 Seed it by calling the real command functions (so the demo also exercises the rules), not by writing JSON by hand.
 
@@ -455,7 +455,7 @@ Seed it by calling the real command functions (so the demo also exercises the ru
 - All milestones accepted by me.
 - `node --test` passes with no failures and no skipped tests.
 - The page opens from `file://` with no console errors and no network requests.
-- The README covers: what it is, install (`npm link`), `brick init` and what it writes into a project, the human and AI command lists, how to run human commands in Claude Code (`!brick approve p3`), that `.brick/` is gitignored and not backed up by git, the guards and their honest limits, and the out-of-scope list from section 2.
+- The README covers: what it is, install (`npm link`), `board init` and what it writes into a project, the human and AI command lists, how to run human commands in Claude Code (`!board approve p3`), that `.board/` is gitignored and not backed up by git, the guards and their honest limits, and the out-of-scope list from section 2.
 - No file over about 250 lines without a note from you explaining why.
 
 ---
@@ -464,7 +464,7 @@ Seed it by calling the real command functions (so the demo also exercises the ru
 
 So you do not design yourself into a corner:
 
-- **Agent roles,** each with its model set per project in `.brick/config.json` (the only source; agent files would be generated from it, for example by a `brick sync-agents` command): the main agent (conversation and scribe), an optional read-only **gap-finder** with fresh context, a blind **test writer**, an **implementer** per leaf (with an optional profile such as `ui`), and a **reviewer**. None of them may write `tree.json`.
+- **Agent roles,** each with its model set per project in `.board/config.json` (the only source; agent files would be generated from it, for example by a `board sync-agents` command): the main agent (conversation and scribe), an optional read-only **gap-finder** with fresh context, a blind **test writer**, an **implementer** per leaf (with an optional profile such as `ui`), and a **reviewer**. None of them may write `tree.json`.
 - **Git flow:** a feature branch from main, then one worktree per leaf branching off it, merged back into the feature branch, then into main. Agents in worktrees read the board through the main checkout (section 4) and cannot write it.
-- **Distribution:** a Claude Code plugin or marketplace entry that wraps the same CLI, and support for other agent clients (their own instruction files and hooks; the CLI, `.brick/` and the page stay the same).
+- **Distribution:** a Claude Code plugin or marketplace entry that wraps the same CLI, and support for other agent clients (their own instruction files and hooks; the CLI, `.board/` and the page stay the same).
 - Leaf detail with approaches and planned-versus-actual flow, the Kanban view, tickets.

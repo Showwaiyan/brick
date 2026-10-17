@@ -6,7 +6,7 @@ import { tmp, sample } from './helpers.mjs';
 import { create, load, mutate, validate, emptyData, nextId, addEvent } from '../src/store.mjs';
 
 test('atomic write leaves no temp file and no lock', () => {
-  const dir = path.join(tmp(), '.brick');
+  const dir = path.join(tmp(), '.board');
   create(dir, emptyData('x'));
   mutate(dir, (d) => { d.project.name = 'y'; });
   assert.deepEqual(fs.readdirSync(dir), ['tree.json']);
@@ -14,7 +14,7 @@ test('atomic write leaves no temp file and no lock', () => {
 });
 
 test('invalid data is rejected before writing', () => {
-  const dir = path.join(tmp(), '.brick');
+  const dir = path.join(tmp(), '.board');
   create(dir, emptyData('x'));
   const before = fs.readFileSync(path.join(dir, 'tree.json'), 'utf8');
   assert.throws(() => mutate(dir, (d) => { d.gaps.g1 = { id: 'g1', node: 'nope', status: 'open' }; }), /does not exist/);
@@ -23,7 +23,7 @@ test('invalid data is rejected before writing', () => {
 });
 
 test('a stale lock is taken over', () => {
-  const dir = path.join(tmp(), '.brick');
+  const dir = path.join(tmp(), '.board');
   create(dir, emptyData('x'));
   const lock = path.join(dir, '.lock');
   fs.writeFileSync(lock, '');
@@ -34,7 +34,7 @@ test('a stale lock is taken over', () => {
 });
 
 test('a fresh lock blocks the write', () => {
-  const dir = path.join(tmp(), '.brick');
+  const dir = path.join(tmp(), '.board');
   create(dir, emptyData('x'));
   fs.writeFileSync(path.join(dir, '.lock'), '');
   assert.throws(() => mutate(dir, () => {}), /Try again/);

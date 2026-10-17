@@ -7,17 +7,17 @@ import { findProject, isLinkedWorktree } from '../src/store.mjs';
 
 test('git repo: found from a subfolder', () => {
   const root = gitRepo();
-  fs.mkdirSync(path.join(root, '.brick'));
+  fs.mkdirSync(path.join(root, '.board'));
   fs.mkdirSync(path.join(root, 'src/deep'), { recursive: true });
   const p = findProject(path.join(root, 'src/deep'));
   assert.equal(p.root, root);
-  assert.equal(p.dir, path.join(root, '.brick'));
+  assert.equal(p.dir, path.join(root, '.board'));
 });
 
 test('linked worktree resolves to the main checkout', () => {
   const root = gitRepo();
-  fs.mkdirSync(path.join(root, '.brick'));
-  fs.writeFileSync(path.join(root, '.brick/tree.json'), '{}');
+  fs.mkdirSync(path.join(root, '.board'));
+  fs.writeFileSync(path.join(root, '.board/tree.json'), '{}');
   const wt = path.join(tmp(), 'wt');
   git(root, 'worktree', 'add', '-q', wt, '-b', 'feat');
   const p = findProject(wt);
@@ -30,9 +30,9 @@ test('linked worktree resolves to the main checkout', () => {
 
 test('no git: walks up to find the data folder', () => {
   const root = tmp();
-  fs.mkdirSync(path.join(root, '.brick'));
+  fs.mkdirSync(path.join(root, '.board'));
   fs.mkdirSync(path.join(root, 'a/b'), { recursive: true });
-  assert.equal(findProject(path.join(root, 'a/b')).dir, path.join(root, '.brick'));
+  assert.equal(findProject(path.join(root, 'a/b')).dir, path.join(root, '.board'));
 });
 
 test('no git and no data folder: reports it does not exist', () => {
@@ -46,7 +46,7 @@ test('a data folder inside a linked worktree is ignored with a warning', () => {
   const root = gitRepo();
   const wt = path.join(tmp(), 'wt');
   git(root, 'worktree', 'add', '-q', wt, '-b', 'feat');
-  fs.mkdirSync(path.join(wt, '.brick'));
+  fs.mkdirSync(path.join(wt, '.board'));
   const p = findProject(wt);
   assert.equal(p.root, root);
   assert.equal(p.warnings.length, 1);

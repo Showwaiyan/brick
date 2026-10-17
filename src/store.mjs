@@ -4,7 +4,7 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 
 // The one place the tool's name lives. The data folder is derived from it.
-export const TOOL_NAME = 'brick';
+export const TOOL_NAME = 'board';
 export const DATA_DIR = `.${TOOL_NAME}`;
 
 const STATUSES = ['drafting', 'approved', 'superseded'];

@@ -4,7 +4,7 @@
   "description": "A decomposition harness for Claude Code: the human owns the breakdown, the AI is critic and scribe.",
   "type": "module",
   "bin": {
-    "brick": "bin/brick.mjs"
+    "board": "bin/board.mjs"
   },
   "engines": {
     "node": ">=20"
