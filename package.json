@@ -1,0 +1,15 @@
+{
+  "name": "brick",
+  "version": "0.1.0",
+  "description": "A decomposition harness for Claude Code: the human owns the breakdown, the AI is critic and scribe.",
+  "type": "module",
+  "bin": {
+    "brick": "bin/brick.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --test"
+  }
+}
