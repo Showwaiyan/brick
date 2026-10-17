@@ -1,52 +1,12 @@
-// Runs the human's typed /brick:<action> commands. No shell is ever involved.
+// Runs the human's typed /brick:<action> commands, given in plain words. No shell is ever involved.
 import { execute } from './commands.mjs';
 import { initProject } from './init.mjs';
-import { findProject, DATA_DIR, PLUGIN_NAME as PLUGIN } from './store.mjs';
+import { parseRequest } from './refer.mjs';
+import { findProject, load, DATA_DIR, PLUGIN_NAME as PLUGIN } from './store.mjs';
 
 const TAG = `[${PLUGIN}]`;
-
-// Engine argv prefix for each human-only action. `init` is handled separately.
-const HUMAN = {
-  init: null,
-  approve: ['approve'],
-  reopen: ['reopen'],
-  supersede: ['supersede'],
-  restore: ['restore'],
-  resolve: ['gap', 'resolve'],
-  dismiss: ['gap', 'dismiss'],
-  open: ['open'],
-};
-
-// Splits text into words. Handles "double" and 'single' quotes and \" \\ inside double quotes.
-export function tokenize(text) {
-  const out = [];
-  let cur = '';
-  let inToken = false;
-  let quote = null;
-  const s = String(text ?? '');
-  for (let i = 0; i < s.length; i++) {
-    const c = s[i];
-    if (quote === '"') {
-      if (c === '\\' && (s[i + 1] === '"' || s[i + 1] === '\\')) { cur += s[++i]; }
-      else if (c === '"') quote = null;
-      else cur += c;
-    } else if (quote === "'") {
-      if (c === "'") quote = null;
-      else cur += c;
-    } else if (c === '"' || c === "'") {
-      quote = c;
-      inToken = true;
-    } else if (/\s/.test(c)) {
-      if (inToken) { out.push(cur); cur = ''; inToken = false; }
-    } else {
-      cur += c;
-      inToken = true;
-    }
-  }
-  if (quote) throw new Error(`Unterminated ${quote} quote in the command.`);
-  if (inToken) out.push(cur);
-  return out;
-}
+const REASON_VERBS = ['approve', 'reopen', 'supersede', 'restore', 'resolve', 'dismiss'];
+const ACTIONS = ['init', 'open', ...REASON_VERBS];
 
 // Rewrites engine wording so the human is pointed at slash commands, never at the board CLI.
 function humanize(msg) {
@@ -56,17 +16,23 @@ function humanize(msg) {
     .replace(/Run board init in the main checkout/g, `Run /${PLUGIN}:init in the main checkout`);
 }
 
-// Runs one typed command. Returns '' if it is not one of ours; otherwise a "[brick] ..." line. Never throws.
-export function runSlash(commandName, argsText, cwd) {
-  const name = String(commandName || '');
+// Runs one typed command. Returns '' if it is not one of ours; otherwise a "[brick] ..." block. Never throws.
+export function runSlash(commandName, text, cwd) {
+  const name = String(commandName || '').toLowerCase();
   const action = name.startsWith(`${PLUGIN}:`) ? name.slice(PLUGIN.length + 1) : null;
-  if (!action || !Object.hasOwn(HUMAN, action)) return '';
+  if (!action || !ACTIONS.includes(action)) return '';
   try {
-    const argv = tokenize(argsText);
-    if (action === 'init') return `${TAG} ${initProject(cwd, argv)}`;
+    const words = String(text ?? '').trim();
+    if (action === 'init') {
+      if (!words) return `${TAG} NEEDS: a name for the project, in your own words.\nNothing was changed.\nComplete command: /${PLUGIN}:init <what you want to build>`;
+      return `${TAG} ${initProject(cwd, ['--', words])}`;
+    }
     const project = findProject(cwd);
-    if (!project.exists) return `${TAG} No ${DATA_DIR}/ here. Run: /${PLUGIN}:init "<name>"`;
-    return `${TAG} ${execute(project.dir, [...HUMAN[action], ...argv])}`;
+    if (!project.exists) return `${TAG} No ${DATA_DIR}/ here. Run: /${PLUGIN}:init <what you want to build>`;
+    if (action === 'open') return `${TAG} ${execute(project.dir, ['open'])}`;
+    const parsed = parseRequest(load(project.dir), action, words);
+    if (parsed.needs) return `${TAG} ${parsed.needs}`;
+    return `${TAG} ${execute(project.dir, parsed.argv)}`;
   } catch (e) {
     return `${TAG} ${humanize(e.message)}`;
   }

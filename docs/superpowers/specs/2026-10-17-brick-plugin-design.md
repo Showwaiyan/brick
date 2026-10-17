@@ -51,21 +51,26 @@ Hook commands use `${CLAUDE_PLUGIN_ROOT}`. State is never written under the plug
 ## 5. The human-decision flow
 
 1. The human types `/brick:approve p3`.
-2. The `UserPromptExpansion` hook (`board guard prompt`) receives `command_name` and `command_args` as data. It ignores any command that is not `brick:*`.
-3. It splits `command_args` with its own tokenizer (double and single quotes, backslash escapes; never a shell), maps the command to the engine action, runs it against the project's `.board/`, and prints the result as plain text.
-4. The stub skill body tells the AI to report the hook's result in one or two lines and not to run anything.
-5. A refused action (open gaps, unapproved child, missing `--why`) prints the engine's reason and exits 0. The hook never blocks a prompt and never crashes a session.
+2. The `UserPromptExpansion` hook (`board guard prompt`) receives `command_name` and `command_args` as data. It ignores any command that is not `brick:*` (the name is matched case-insensitively).
+3. The text after the command is **natural language, with no flags or quotes**. The hook reads it with fixed rules (no AI, no shell): it finds the target and treats the rest as the human's reason or name, kept verbatim.
+4. It runs the engine action itself and prints one `[brick] ...` line. The stub skill tells the AI to relay that line in one or two sentences and run nothing.
+5. **Incomplete input never guesses.** If the target is missing, ambiguous or unknown, or a required reason is missing, nothing changes and the hook prints `[brick] NEEDS: <what is missing>`, the candidates with their ids, and the complete command to send. The stub skill tells the AI to ask the user one short question and then give the exact completed slash command for the user to send. The AI cannot run it for the user.
+6. A refused action (open gaps, unapproved child) prints the engine's reason and exits 0. The hook never blocks a prompt and never crashes a session.
 
-| Slash command | Engine action |
+**Referring to things.** A node is found by (1) an id as the first word (`b3`, `p2`), else (2) its title at the start of the text (case-insensitive, a leading "the" ignored; the longest matching title wins), else (3) the first id anywhere in the text. Two nodes with the same title are ambiguous, so the ids are listed and needed. A gap is found by its `g` id, or by a node title when that node has exactly one open gap (several: list them). Titles are matched among nodes that the verb can apply to (approve: drafting; reopen: approved; supersede: not superseded; restore: superseded).
+
+| Slash command | Reads as |
 |---|---|
-| `/brick:init "<name>" [--input ..] [--output ..] [--demo]` | create `.board/`, `.gitignore` line, config |
-| `/brick:approve <id>` | `approve` |
-| `/brick:reopen <id> --why ".."` | `reopen` |
-| `/brick:supersede <id> --why ".." [--by <id>]` | `supersede` |
-| `/brick:restore <id>` | `restore` |
-| `/brick:resolve <gapId> --note ".."` | `gap resolve` |
-| `/brick:dismiss <gapId> --why ".."` | `gap dismiss` |
+| `/brick:init <project name in your words>` | creates `.board/`; input and output are recorded by the AI from the conversation |
+| `/brick:approve <node>` | approve |
+| `/brick:reopen <node> <why>` | reopen; the reason is required |
+| `/brick:supersede <node> <why>` | supersede; reason required; "replaced by <id>" sets the replacement |
+| `/brick:restore <node>` | restore |
+| `/brick:resolve <gap or node> <note>` | resolve a gap; note required |
+| `/brick:dismiss <gap or node> <why>` | dismiss a gap; reason required |
 | `/brick:open` | render and open the page |
+
+A leading "because", "since" or ":" in the reason is dropped. `--demo` exists only on the CLI.
 
 The AI cannot reach this path: its Skill call is refused, and the hook only fires for typed input.
 

@@ -47,11 +47,11 @@ export function nextCommands(data, id) {
     const gaps = openGaps(data, id);
     if (gaps.length === 0) cmds.push(`${S}approve ${id}`);
     for (const g of gaps) {
-      cmds.push(`${S}resolve ${g.id} --note "…"`);
-      cmds.push(`${S}dismiss ${g.id} --why "…"`);
+      cmds.push(`${S}resolve ${g.id} <note>`);
+      cmds.push(`${S}dismiss ${g.id} <why>`);
     }
   }
-  if (n.status === 'approved') cmds.push(`${S}reopen ${id} --why "…"`);
-  cmds.push(`${S}supersede ${id} --why "…"`);
+  if (n.status === 'approved') cmds.push(`${S}reopen ${id} <why>`);
+  cmds.push(`${S}supersede ${id} <why>`);
   return cmds;
 }

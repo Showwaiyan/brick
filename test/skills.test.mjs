@@ -32,6 +32,9 @@ test('every stub is human-only and tells the AI to report the hook line', () => 
     assert.ok(front['argument-hint'] !== undefined, name);
     assert.ok(body.includes('[brick]'), name);
     assert.match(body, /Do not run any command/, name);
+    assert.match(body, /NEEDS/, name);
+    assert.match(body, /Complete command/, name);
+    assert.ok(!/--\w+/.test(front.description + front['argument-hint']), `${name}: no CLI flags in the usage`);
   }
 });
 
@@ -47,6 +50,8 @@ test('decompose is model-invocable and names the slash commands', () => {
     assert.ok(!body.includes(bad), bad);
   }
   assert.ok(body.includes('board ai gap'));
+  assert.ok(!/--(why|note|by|input|output)\b/.test(body.replace(/board ai [^\n]*/g, '')), 'no flag-style slash commands');
+  assert.match(body, /ask the user/i);
 });
 
 test('the old templates folder is gone', () => {

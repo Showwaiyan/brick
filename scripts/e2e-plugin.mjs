@@ -29,8 +29,14 @@ sh('node', [BIN, 'add', 'box', 'One']);
 sh('node', [BIN, 'add', 'box', 'Two']);
 sh('node', [BIN, 'add', 'box', 'Three']);
 
-const typed = claude('/brick:approve b1');
-check('typed /brick:approve b1 approves b1', status('b1') === 'approved', typed.stdout + typed.stderr);
+const typed = claude('/brick:approve one');
+check('typed /brick:approve one (a title) approves b1', status('b1') === 'approved', typed.stdout + typed.stderr);
+
+const again = claude('/brick:reopen one');
+check('reopen without a reason changes nothing and asks', status('b1') === 'approved' && /reason/i.test(again.stdout), again.stdout);
+
+const reopened = claude('/brick:reopen one I changed my mind');
+check('reopen with a reason in plain words works', status('b1') === 'drafting', reopened.stdout);
 
 const viaSkill = claude('Use the Skill tool to invoke the skill brick:approve with args "b2". Report exactly what happened.');
 check('the AI cannot approve b2 through the Skill tool', status('b2') === 'drafting', viaSkill.stdout);

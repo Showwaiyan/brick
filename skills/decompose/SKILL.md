@@ -10,8 +10,8 @@ The user decides how the problem is broken down. You ask questions, name what is
 ## What you can run
 - `board ai add`, `board ai edit`, `board ai project`, `board ai gap`
 - `board ls`, `board show <id>`, `board brief`, `board log`
-You cannot approve, reopen, supersede, restore, resolve or dismiss. Those are the user's commands. When one is needed, give the exact slash command and stop: `/brick:approve <id>`, `/brick:reopen <id> --why "..."`, `/brick:supersede <id> --why "..."`, `/brick:restore <id>`, `/brick:resolve <gapId> --note "..."`, `/brick:dismiss <gapId> --why "..."`. Never edit anything inside `.board/`.
-If there is no `.board/` folder, ask the user to run `/brick:init "<name>"` and wait.
+You cannot approve, reopen, supersede, restore, resolve or dismiss. Those are the user's commands. When one is needed, tell the user which one in plain words and give the slash command, then stop. The user writes it in their own words, with no flags: `/brick:approve <node id or title>`, `/brick:reopen <node> <why>`, `/brick:supersede <node> <why>`, `/brick:restore <node>`, `/brick:resolve <gap id or node> <note>`, `/brick:dismiss <gap id or node> <why>`. If you need something from the user to complete it (which node, or their reason), ask for it first, then give them the finished command to send.
+If there is no `.board/` folder, ask the user to run `/brick:init <what you want to build>` and wait.
 
 ## Step 1: the flow
 1. Ask the user to describe the thing in their own words. Record it with `board ai project` (input and output may be empty; some things have none).

@@ -20,31 +20,34 @@ Plugin hooks load after a reload or a new session. Needs Node.js 20 or newer on 
 
 ## Use
 
-In your project, in Claude Code:
+In your project, in Claude Code, say what you want to build:
 
 ```
-/brick:init "My project" --input "what goes in" --output "what comes out"
+/brick:init login feature for my app
 /brick:open
 ```
 
-Then talk to Claude about what you want to build. The `decompose` skill loads on its own: the AI asks, you answer, and it records your words as boxes and sub-problems. Open the page any time with `/brick:open`.
+Then talk to Claude about it. The `decompose` skill loads on its own: the AI asks, you answer, and it records your words as boxes and sub-problems, including what goes in and what comes out. Open the page any time with `/brick:open`.
 
-`/brick:init` creates `.board/` (gitignored) and adds the `.gitignore` line. Add `--demo` to try a ready-made "User login" board.
+`/brick:init` creates `.board/` (gitignored) and adds the `.gitignore` line.
 
 ## Your commands
 
-These only work when **you** type them. The AI cannot trigger them.
+You write them in plain words: no flags, no quotes. They only work when **you** type them; the AI cannot trigger them. A node is named by its **title or its id** (`b3`, `p2`); a gap by its id (`g1`) or by the title of a node that has one open gap. Ids are needed when two nodes share a title.
 
-| Command | Does |
+| You type | Does |
 |---|---|
-| `/brick:init "<name>" [--input ..] [--output ..] [--demo]` | create the board |
-| `/brick:approve <id>` | approve a node |
-| `/brick:reopen <id> --why ".."` | approved back to drafting |
-| `/brick:supersede <id> --why ".." [--by <id>]` | drop a node and everything below it |
-| `/brick:restore <id>` | undo a direct supersede |
-| `/brick:resolve <gapId> --note ".."` | a gap is handled |
-| `/brick:dismiss <gapId> --why ".."` | a gap is not real |
+| `/brick:init <what you want to build>` | create the board, named in your words |
+| `/brick:approve check password` | approve a node (or `/brick:approve b3`) |
+| `/brick:reopen b3 I changed my mind about the order` | approved back to drafting, with your reason |
+| `/brick:supersede sign in with google the client only needs a password` | drop a node and everything below it, with your reason |
+| `/brick:supersede b5 replaced by b2, dropped OAuth` | same, naming the replacement |
+| `/brick:restore b5` | undo a direct supersede |
+| `/brick:resolve g1 handled in the hash step` | a gap is handled |
+| `/brick:dismiss g1 covered by the username decision` | a gap is not real |
 | `/brick:open` | rebuild the page and open it |
+
+If you leave something out (which node, or your reason), nothing changes: the reply says what is missing and gives the full command to send, and Claude asks you for it. Claude cannot send it for you.
 
 Rules: a node can be approved only when it is drafting, has a title, has no open gaps, all its active children are approved, and (for a leaf problem) it has an input, an output and a check. Superseding needs a reason, marks everything below too, and prints that nothing built from it has been undone.
 

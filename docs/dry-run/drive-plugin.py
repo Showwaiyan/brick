@@ -2,7 +2,7 @@
 import json, subprocess, sys, os
 root, proj, logpath = sys.argv[1:4]
 turns = [
- '/brick:init "User login" --input "username and password" --output "logged in"',
+ '/brick:init user login for a small web app',
  "I want to plan a user login for a small web app. A username and password go in, and the person ends up logged in. Help me break it down.",
  "First it validates the input, then it looks up the user, then it checks the password, then it creates a session.",
  "Let's break down 'check password'. I think it has two parts: comparing the password hash, and rate-limiting attempts.",
@@ -10,7 +10,7 @@ turns = [
  "What is missing in the check password part? Name the gaps.",
  "What would you do about the first gap? Give me your suggestion.",
  "OK I'll go with: when the username does not exist, return the same error as a wrong password. Record that on check password.",
- "/brick:dismiss g1 --why \"covered by the username decision\"",
+ "/brick:dismiss g1 covered by the username decision",
  "Looks good? Is the whole plan ready to build?",
 ]
 sid = None

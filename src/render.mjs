@@ -31,7 +31,7 @@ export function pageData(data, now) {
       open_gaps: openGaps(data, n.id).length,
       gaps: gaps.map((g) => ({
         id: g.id, missing: g.missing, where: g.where, status: g.status, note: g.note,
-        commands: [`/${PLUGIN_NAME}:resolve ${g.id} --note "…"`, `/${PLUGIN_NAME}:dismiss ${g.id} --why "…"`],
+        commands: [`/${PLUGIN_NAME}:resolve ${g.id} <note>`, `/${PLUGIN_NAME}:dismiss ${g.id} <why>`],
       })),
       history: eventsFor(data, n.id).slice(0, 10).map((e) => ({ seq: e.seq, at: e.at, actor: e.actor, action: e.action, summary: summary(e) })),
       next_commands: nextCommands(data, n.id),
