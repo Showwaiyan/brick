@@ -79,7 +79,7 @@ The AI cannot reach this path: its Skill call is refused, and the hook only fire
 
 - Install: `/plugin marketplace add Showwaiyan/brick`, then `/plugin install brick@brick`. Update with `/plugin update`. The repo-as-its-own-marketplace layout is described but not shown as an example in the docs; verify with `claude plugin validate` and a real install.
 - No per-project wiring. `board init`'s settings merge, skill copy, `--update` and PATH check are removed. `/brick:init` only creates `.board/`, adds it to `.gitignore`, and writes `config.json`.
-- SessionStart: no `.board/` yet, tell the AI "no board here; ask the user to run /brick:init"; a board exists, print the brief and (if configured) open the page.
+- SessionStart: a board exists, print the brief and (if configured) open the page. With no `.board/`, print nothing (the plugin is enabled in every project); the `decompose` skill tells the AI to ask the user to run `/brick:init` when it finds no board.
 - Plugin hooks run in every project where the plugin is enabled, so every hook must do nothing in a project without a board.
 
 ## 8. Chat confirmation for gap decisions (second step)
@@ -96,7 +96,7 @@ Shipped after the slash-only path works, and only if the answer is visible to ho
 
 - Hook scripts never throw or hang: any failure prints a short message for the AI and exits 0 (the `PreToolUse` guards keep exit code 2 for blocks).
 - A slash command with no board (`/brick:approve p3` before init) prints `No .board/ here. Run: /brick:init "<name>"`.
-- Unknown `/brick:*` commands print the list of valid ones.
+- Any command that is not one of the human-only ones (including the model-facing `/brick:decompose`, other plugins' commands, and a bare `/approve`) is ignored silently. A stub skill whose hook did not run tells the user so and does nothing else.
 
 ## 10. Tests
 
