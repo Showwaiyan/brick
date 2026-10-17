@@ -120,6 +120,34 @@ export function raiseGap(data, actor, nodeId, missing, where, now) {
   return id;
 }
 
+// Phrases that suggest a fix instead of naming what is missing (a speed bump, not a guarantee).
+const FIX_PATTERNS = [
+  /you should/i, /should (use|add|implement|create|make)/i, /consider (using|adding|implementing)/i,
+  /\btry\b/i, /\buse (a|an|the)\b/i, /\badd (a|an|the)\b/i, /implement (a|an|the)/i,
+  /\bthe fix\b/i, /\bsolution\b/i, /instead,? (use|do)/i, /\bI (suggest|recommend)\b/i,
+];
+
+// Throws unless the gap text names what is missing, in one line of 8 to 300 characters.
+export function lintMissing(text) {
+  const t = (text || '').trim();
+  if (t.length < 8 || t.length > 300) throw new Error('--missing must be 8 to 300 characters.');
+  if (/[\r\n]/.test(t)) throw new Error('--missing must be a single line.');
+  if (FIX_PATTERNS.some((re) => re.test(t))) {
+    throw new Error('State what is missing, not how to fill it. Examples: "Nothing defines X." / "It is unclear what happens when Y." / "X assumes Z, which nothing provides."');
+  }
+  return t;
+}
+
+// The AI raises a gap. The user must have written something for the node first.
+export function raiseGapChecked(data, nodeId, missing, where, now) {
+  const n = needNode(data, nodeId);
+  if (n.status === 'superseded') throw new Error(`${nodeId} is superseded; gaps cannot be raised on it.`);
+  if (n.source !== 'human' && n.said.length === 0) {
+    throw new Error('This node has no content from the user yet. Ask the user for their own attempt first.');
+  }
+  return raiseGap(data, 'ai', nodeId, lintMissing(missing), where, now);
+}
+
 // Closes an open gap as resolved or dismissed. A note is required.
 export function closeGap(data, gapId, status, note, now) {
   const g = data.gaps[gapId];

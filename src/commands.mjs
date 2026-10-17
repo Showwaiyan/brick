@@ -2,7 +2,7 @@
 import { parseArgs } from 'node:util';
 import { findProject, load, mutate, nextId, addEvent, TOOL_NAME, DATA_DIR } from './store.mjs';
 import { children } from './model.mjs';
-import { approve, reopen, supersede, restore, closeGap, needNode, nextOrder, blank } from './rules.mjs';
+import { approve, reopen, supersede, restore, closeGap, needNode, nextOrder, blank, raiseGapChecked } from './rules.mjs';
 import { ls, show, log, brief, HELP } from './text.mjs';
 import { initProject } from './init.mjs';
 import { renderFile, renderQuiet } from './render.mjs';
@@ -88,6 +88,22 @@ export function editNode(data, id, f, actor, now) {
 // Picks the contract flags out of parsed values.
 const contractOf = (v) => Object.fromEntries(CONTRACT.map((k) => [k, v[k]]));
 
+// Changes the project name, input or output. Empty text clears input or output.
+function setProject(data, values, actor, now, said) {
+  const changed = [];
+  if (values.name !== undefined) {
+    if (blank(values.name)) throw new Error('The project name cannot be empty.');
+    data.project.name = values.name.trim();
+    changed.push('name');
+  }
+  for (const k of ['input', 'output']) {
+    if (values[k] !== undefined) { data.project[k] = clean(values[k]); changed.push(k); }
+  }
+  if (!changed.length) throw new Error('Nothing to change. Give at least one of --name --input --output.');
+  addEvent(data, actor, 'project', null, said ? { fields: changed, said } : { fields: changed }, now);
+  return `updated project (${changed.join(', ')})`;
+}
+
 // Mutating commands. Each takes (data, argv, now) and returns a result line.
 const MUTATING = {
   add(data, argv, now) {
@@ -104,18 +120,7 @@ const MUTATING = {
   project(data, argv, now) {
     const { values } = parse(argv, { name: { type: 'string' }, input: { type: 'string' }, output: { type: 'string' } },
       'project [--name ..] [--input ..] [--output ..]', 0);
-    const changed = [];
-    if (values.name !== undefined) {
-      if (blank(values.name)) throw new Error('The project name cannot be empty.');
-      data.project.name = values.name.trim();
-      changed.push('name');
-    }
-    for (const k of ['input', 'output']) {
-      if (values[k] !== undefined) { data.project[k] = clean(values[k]); changed.push(k); }
-    }
-    if (!changed.length) throw new Error('Nothing to change. Give at least one of --name --input --output.');
-    addEvent(data, 'human', 'project', null, { fields: changed }, now);
-    return `updated project (${changed.join(', ')})`;
+    return setProject(data, values, 'human', now);
   },
   approve: (data, argv, now) => approve(data, parse(argv, {}, 'approve <id>', 1).positionals[0], now),
   reopen(data, argv, now) {
@@ -142,6 +147,43 @@ const MUTATING = {
   },
 };
 
+// The user's own words, required on every AI write. Returns the trimmed quote.
+function quoteOf(values) {
+  const q = (values['user-said'] || '').trim();
+  if (!q) throw new Error('--user-said is required: quote the words the user said that justify this. Record nothing the user has not said.');
+  if (q.length > 400) throw new Error('--user-said is limited to 400 characters. Quote the key part.');
+  return q;
+}
+
+// AI commands: the only mutating commands the AI may run. No approve, reopen, supersede, restore, resolve or dismiss.
+const SAID = { 'user-said': { type: 'string' } };
+const AI = {
+  add(data, argv, now) {
+    const { values, positionals } = parse(argv, { ...NODE_FLAGS, ...SAID, parent: { type: 'string' }, after: { type: 'string' } },
+      'ai add box|problem --title "<t>" --user-said "<quote>" [--parent <id>] [--after <id>] [--desc ..] [--input ..] [--output ..] [--check ..] [--limits ..]', 1);
+    if (!['box', 'problem'].includes(positionals[0])) throw new Error(`Say "box" or "problem", not "${positionals[0]}".`);
+    const said = quoteOf(values);
+    return addNode(data, { kind: positionals[0], title: values.title, parent: values.parent, after: values.after,
+      desc: values.desc, contract: contractOf(values), source: 'ai-scribe', said }, now);
+  },
+  edit(data, argv, now) {
+    const { values, positionals } = parse(argv, { ...NODE_FLAGS, ...SAID },
+      'ai edit <id> --user-said "<quote>" [--title ..] [--desc ..] [--input ..] [--output ..] [--check ..] [--limits ..]', 1);
+    const said = quoteOf(values);
+    return editNode(data, positionals[0], { title: values.title, desc: values.desc, contract: contractOf(values), said }, 'ai', now);
+  },
+  project(data, argv, now) {
+    const { values } = parse(argv, { ...SAID, input: { type: 'string' }, output: { type: 'string' } },
+      'ai project --user-said "<quote>" [--input ..] [--output ..]', 0);
+    return setProject(data, values, 'ai', now, quoteOf(values));
+  },
+  gap(data, argv, now) {
+    const { values, positionals } = parse(argv, { missing: { type: 'string' }, where: { type: 'string' } },
+      'ai gap <nodeId> --missing "<what is missing>" [--where "<location>"]', 1);
+    return `raised ${raiseGapChecked(data, positionals[0], values.missing, values.where, now)} on ${positionals[0]}`;
+  },
+};
+
 // Read-only commands. Each takes (data, argv, dir) and returns text.
 const READING = {
   render: (data, argv, dir) => `rendered ${renderFile(dir)}`,
@@ -157,11 +199,19 @@ const READING = {
   brief: (data) => brief(data),
 };
 
+// Looks up an `ai` subcommand, or explains what the AI may run.
+function aiHandler(sub) {
+  if (AI[sub]) return AI[sub];
+  throw new Error(`"${T} ai ${sub || ''}" is not an AI command. The AI may run: ${Object.keys(AI).map((k) => `${T} ai ${k}`).join(', ')}. Approving and deciding are the user's job.`);
+}
+
 // Runs one command against a data folder. Used by run() and by the demo.
 export function execute(dir, argv, now = new Date().toISOString()) {
   const [cmd, ...rest] = argv;
-  if (MUTATING[cmd]) {
-    const result = mutate(dir, (data) => MUTATING[cmd](data, rest, now)); // save first,
+  const handler = cmd === 'ai' ? aiHandler(rest[0]) : MUTATING[cmd];
+  if (handler) {
+    const args = cmd === 'ai' ? rest.slice(1) : rest;
+    const result = mutate(dir, (data) => handler(data, args, now)); // save first,
     renderQuiet(dir); // render second: a render failure only warns
     return result;
   }
@@ -174,7 +224,7 @@ export function run(argv, cwd) {
   const [cmd] = argv;
   if (!cmd || cmd === 'help') return HELP;
   if (cmd === 'init') return initProject(cwd, argv.slice(1));
-  if (!MUTATING[cmd] && !READING[cmd]) throw new Error(`Unknown command "${cmd}". Run: ${T} help`);
+  if (cmd !== 'ai' && !MUTATING[cmd] && !READING[cmd]) throw new Error(`Unknown command "${cmd}". Run: ${T} help`);
   const project = findProject(cwd);
   for (const w of project.warnings) console.error(w);
   if (!project.exists) throw new Error(`No ${DATA_DIR}/ here. Run: ${T} init "<name>"`);

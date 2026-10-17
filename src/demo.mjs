@@ -1,7 +1,5 @@
 // Seeds the "User login" demo by running the real commands (so the rules are exercised too).
 import { execute } from './commands.mjs';
-import { mutate } from './store.mjs';
-import { raiseGap } from './rules.mjs';
 
 // Each step is one command line, as an argument list.
 const STEPS = [
@@ -24,9 +22,8 @@ const STEPS = [
   ['supersede', 'b5', '--why', 'Dropped OAuth: the client only needs a password.', '--by', 'b2'],
 ];
 
-// Runs the steps against a data folder, then raises the one gap.
+// Runs the steps against a data folder, then raises the one gap the way the AI would.
 export function seedDemo(dir) {
   for (const step of STEPS) execute(dir, step);
-  const now = new Date().toISOString();
-  mutate(dir, (data) => raiseGap(data, 'ai', 'b3', 'Nothing says what happens when the username does not exist.', null, now));
+  execute(dir, ['ai', 'gap', 'b3', '--missing', 'Nothing says what happens when the username does not exist.']);
 }

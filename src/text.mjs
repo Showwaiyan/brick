@@ -20,6 +20,12 @@ Human commands (run these yourself; in Claude Code type them with a leading !):
   ${T} gap resolve <gapId> --note "<text>"
   ${T} gap dismiss <gapId> --why "<text>"
 
+AI commands (the only writes the AI may run; each needs the user's own words):
+  ${T} ai add box|problem --title "<t>" --user-said "<quote>" [--parent <id>] [--after <id>] [--desc ..] [--input ..] [--output ..] [--check ..] [--limits ..]
+  ${T} ai edit <id> --user-said "<quote>" [--title ..] [--desc ..] [--input ..] [--output ..] [--check ..] [--limits ..]
+  ${T} ai project --user-said "<quote>" [--input ..] [--output ..]
+  ${T} ai gap <nodeId> --missing "<what is missing>" [--where "<location>"]
+
 Read-only (human or AI):
   ${T} ls | ${T} show <id> | ${T} log [--last N] | ${T} brief | ${T} help
   ${T} render              rebuild .board/tree.html
