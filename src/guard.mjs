@@ -5,6 +5,7 @@ import path from 'node:path';
 import { findProject, load, TOOL_NAME, DATA_DIR } from './store.mjs';
 import { brief } from './text.mjs';
 import { renderFile } from './render.mjs';
+import { runSlash } from './slash.mjs';
 import { openFile } from './open.mjs';
 
 const T = TOOL_NAME;
@@ -21,14 +22,25 @@ function allowedCall(first, second) {
   return first === 'ai' && AI_ALLOWED.includes(second);
 }
 
+// Slash command a human types for each blocked `board` subcommand.
+const SLASH = { approve: 'approve', reopen: 'reopen', supersede: 'supersede', restore: 'restore', init: 'init' };
+
+// The message that tells the AI what to do instead of a blocked `board` call.
+function blockMessage(first, second) {
+  const slash = first === 'gap' && ['resolve', 'dismiss'].includes(second) ? second : SLASH[first];
+  if (slash) return `This is a human-only command. Ask the user to run: /brick:${slash} ... Do not run it yourself.`;
+  if (['add', 'edit', 'project'].includes(first)) {
+    return `Do not run ${T} ${first} yourself. Record what the user said with: ${T} ai ${first} ... --user-said "<their words>"`;
+  }
+  if (first === 'ai') return `The AI may only run: ${T} ai add|edit|project|gap. Approving and deciding are the user's job.`;
+  return `"${T} ${first}" is not a command the AI may run. The AI may run ${T} ai add|edit|project|gap and the read-only commands.`;
+}
+
 // Decides on a Bash command. Returns null to allow, or the message that blocks it.
 export function checkBash(command) {
   const text = String(command || '');
   for (const m of text.matchAll(CALL)) {
-    if (!allowedCall(m[2], m[3])) {
-      const said = ['ai', 'gap'].includes(m[2]) && m[3] ? `${m[2]} ${m[3]}` : m[2]; // 2nd word only where it is a subcommand
-      return `This is a human-only command. Ask the user to run: ${T} ${said} ... Do not run it yourself.`;
-    }
+    if (!allowedCall(m[2], m[3])) return blockMessage(m[2], m[3]);
   }
   if (text.includes(`${DATA_DIR}/`)) {
     return `Do not read or write ${DATA_DIR}/ directly. Use ${T} ls, ${T} show <id> or ${T} brief instead.`;
@@ -70,6 +82,7 @@ export function sessionStart(cwd, opener = openFile) {
 export function runGuard(sub, stdinText, cwd) {
   let input = {};
   try { input = JSON.parse(stdinText || '{}'); } catch { /* treat as empty */ }
+  if (sub === 'prompt') return { code: 0, out: runSlash(input.command_name || '', input.command_args || '', input.cwd || cwd), err: '' };
   if (sub === 'session-start') return { code: 0, out: sessionStart(input.cwd || cwd), err: '' };
   let message = null;
   if (sub === 'bash') message = checkBash(input.tool_input?.command);
