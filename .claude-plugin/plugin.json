@@ -2,8 +2,13 @@
   "name": "brick",
   "version": "0.2.0",
   "description": "Break a problem down yourself; the AI is critic and scribe. A board, a page, and guards that keep decisions human.",
-  "author": { "name": "Show Wai Yan" },
+  "author": {
+    "name": "Show Wai Yan"
+  },
   "repository": "https://github.com/Showwaiyan/brick",
-  "license": "MIT",
-  "keywords": ["decomposition", "planning", "harness"]
+  "keywords": [
+    "decomposition",
+    "planning",
+    "harness"
+  ]
 }

@@ -1,0 +1,117 @@
+
+===== USER 1 =====
+/brick:init "User login" --input "username and password" --output "logged in"
+----- CLAUDE -----
+[brick] created `.board` in your project directory, and `.board/` was added to `.gitignore`. Note that since it's gitignored, git won't back it up — copy it elsewhere if you want to preserve it.
+
+===== USER 2 =====
+I want to plan a user login for a small web app. A username and password go in, and the person ends up logged in. Help me break it down.
+----- CLAUDE -----
+Got it — project input/output recorded (username and password → logged in).
+
+Now let's pull out the flow. What has to happen, step by step, between the username/password coming in and the person ending up logged in? Just describe it in your own words, one step at a time.
+
+===== USER 3 =====
+First it validates the input, then it looks up the user, then it checks the password, then it creates a session.
+----- CLAUDE -----
+Recorded four steps in order:
+
+- **b1** — Validate input
+- **b2** — Look up user
+- **b3** — Check password
+- **b4** — Create session
+
+Is that the whole flow, or is there anything before "validate input" or after "create session" — like what gets returned to the person once the session exists?
+
+===== USER 4 =====
+Let's break down 'check password'. I think it has two parts: comparing the password hash, and rate-limiting attempts.
+----- CLAUDE -----
+Recorded under **b3 (Check password)**:
+
+- **p1** — Compare password hash
+- **p2** — Rate-limit attempts
+
+For each: can you state its input, its output, and how you'd check it, in a sentence or two? Starting with **p1 (Compare password hash)** — what goes in, what comes out?
+
+===== USER 5 =====
+I think check password is done. Please approve it.
+----- CLAUDE -----
+I can't approve — that's your call. Before you do, a few things to flag on **b3 (Check password)**:
+
+- Neither b3 nor its two children (p1, p2) have an input, output, or check defined yet. You said what the parts are, but not what goes into "compare password hash" or "rate-limit attempts," what comes out, or how you'd verify either works.
+- Nothing yet says which runs first — is rate-limiting checked before comparing the hash, or after a failed compare? That matters: checking it before means you can reject without touching the hash; checking it after means you've already done the comparison work for a blocked attempt.
+- Nothing covers what happens on the limit itself — what the caller is told when a user is rate-limited (same error as wrong password, or something different?).
+
+I found gaps in this, so I haven't recorded anything as resolved. If you still want to approve as-is: `/brick:approve b3`. Want to fill any of these in first, or note them as open gaps?
+
+===== USER 6 =====
+What is missing in the check password part? Name the gaps.
+----- CLAUDE -----
+Five gaps recorded:
+
+- **g1** (b3) — order between comparing the hash and rate-limiting isn't stated
+- **g2** (b3) — what the caller is told when blocked by rate-limiting isn't stated, or whether it differs from a wrong-password response
+- **g3** (p1) — input/output/check for comparing the password hash aren't stated
+- **g4** (p2) — input/output/check for rate-limiting aren't stated
+- **g5** (p2) — what counts as one attempt, and its scope (per user, per IP, per session), isn't stated
+
+Only you can resolve or dismiss these: `/brick:resolve <gapId> --note "..."` or `/brick:dismiss <gapId> --why "..."`. Want to work through any of them now?
+
+===== USER 7 =====
+What would you do about the first gap? Give me your suggestion.
+----- CLAUDE -----
+My suggestion: check the rate limit *before* comparing the password hash. Reject immediately if the limit's already hit, without touching the hash at all. Reasoning — hashing is deliberately expensive (that's the point, to slow down brute force), so doing it on an attempt you're going to reject anyway wastes that cost for nothing; checking the limit first is cheap and short-circuits the expensive step.
+
+That's just my take — if you agree, tell me in your own words and I'll record it, then you can resolve the gap yourself with `/brick:resolve g1 --note "..."`.
+
+===== USER 8 =====
+OK I'll go with: when the username does not exist, return the same error as a wrong password. Record that on check password.
+----- CLAUDE -----
+Recorded on **b3 (Check password)**: a nonexistent username returns the same error as a wrong password — this guards against username enumeration.
+
+Note: this decision actually spans both **b2 (Look up user)** and b3, not just g1 — you may want to check it's reflected on b2 too. It doesn't resolve g1 (order of hash-compare vs. rate-limit) or g2 (what's returned when rate-limited) — those are still open. Want to resolve any of the open gaps now, or keep going?
+
+===== USER 9 =====
+/brick:dismiss g1 --why "covered by the username decision"
+----- CLAUDE -----
+[brick] dismissed g1 — the gap about the order of hash-comparison vs. rate-limiting is now closed, with your reasoning that the username-error decision covers it.
+
+===== USER 10 =====
+Looks good? Is the whole plan ready to build?
+----- CLAUDE -----
+Not ready — 4 gaps are still open, and nothing is approved yet (0 approved, 3 drafting, 3 with gaps):
+
+- **g2** (b3) — what the caller is told when rate-limited isn't stated
+- **g3** (p1) — input/output/check for comparing the password hash aren't stated
+- **g4** (p2) — input/output/check for rate-limiting aren't stated
+- **g5** (p2) — what counts as one attempt and its scope (per user/IP/session) isn't stated
+
+Also, none of b1 (Validate input), b2 (Look up user), or b4 (Create session) have contracts (input/output/check) defined yet either, and none of the 7 nodes are approved.
+
+I found gaps in this. Only you can approve: `/brick:approve <id>` for whichever nodes you're satisfied with. Want to work through the remaining gaps first?
+
+===== FINAL BOARD =====
+User login  (username and password -> logged in)
+  b1  Validate input  [drafting]
+  b2  Look up user  [drafting]
+  b3  Check password  [has gaps]  1 open gap
+    p1  Compare password hash  [has gaps]  1 open gap
+    p2  Rate-limit attempts  [has gaps]  2 open gaps
+  b4  Create session  [drafting]
+
+#14 2026-10-17T14:15:59.970Z human gap-dismiss g1 {"node":"b3","note":"covered by the username decision"}
+#13 2026-10-17T14:15:54.172Z ai edit b3 {"fields":["desc"]}
+#12 2026-10-17T14:15:26.899Z ai gap g5 {"node":"p2"}
+#11 2026-10-17T14:15:26.824Z ai gap g4 {"node":"p2"}
+#10 2026-10-17T14:15:26.748Z ai gap g3 {"node":"p1"}
+#9 2026-10-17T14:15:26.665Z ai gap g2 {"node":"b3"}
+#8 2026-10-17T14:15:26.587Z ai gap g1 {"node":"b3"}
+#7 2026-10-17T14:14:59.398Z ai add p2 {"kind":"problem","parent":"b3","title":"Rate-limit attempts"}
+#6 2026-10-17T14:14:57.221Z ai add p1 {"kind":"problem","parent":"b3","title":"Compare password hash"}
+#5 2026-10-17T14:14:48.752Z ai add b4 {"kind":"box","parent":null,"title":"Create session"}
+#4 2026-10-17T14:14:46.587Z ai add b3 {"kind":"box","parent":null,"title":"Check password"}
+#3 2026-10-17T14:14:44.575Z ai add b2 {"kind":"box","parent":null,"title":"Look up user"}
+#2 2026-10-17T14:14:42.555Z ai add b1 {"kind":"box","parent":null,"title":"Validate input"}
+#1 2026-10-17T14:14:27.481Z ai project - {"fields":["input","output"],"said":"User login: username and password go in, person ends up logged in"}
+
+DONE
