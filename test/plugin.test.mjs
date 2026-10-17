@@ -49,3 +49,16 @@ test('every hook command runs and stays silent on an empty payload in a folder w
     }
   }
 });
+
+test('bin/board is executable, runs, and also works through a symlink', () => {
+  const shim = path.join(ROOT, 'bin/board');
+  fs.accessSync(shim, fs.constants.X_OK);
+  const direct = spawnSync(shim, ['help'], { encoding: 'utf8' });
+  assert.equal(direct.status, 0, direct.stderr);
+  assert.match(direct.stdout, /AI commands/);
+  const link = path.join(tmp(), 'board');
+  fs.symlinkSync(shim, link);
+  const viaLink = spawnSync(link, ['help'], { encoding: 'utf8' });
+  assert.equal(viaLink.status, 0, viaLink.stderr);
+  assert.equal(viaLink.stdout, direct.stdout);
+});
