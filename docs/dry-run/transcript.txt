@@ -1,0 +1,98 @@
+
+===== USER 1 =====
+I want to plan a user login for a small web app. A username and password go in, and the person ends up logged in. Help me break it down.
+----- CLAUDE -----
+Let's start with the overall shape. In your own words — what goes into this login flow, and what comes out the other end?
+
+===== USER 2 =====
+First it validates the input, then it looks up the user, then it checks the password, then it creates a session.
+----- CLAUDE -----
+Recorded four boxes in order:
+
+- **b1** — validate the input
+- **b2** — look up the user
+- **b3** — check the password
+- **b4** — create a session
+
+Which one do you want to break down first, or would you rather leave any of these whole for now?
+
+===== USER 3 =====
+Let's break down 'check password'. I think it has two parts: comparing the password hash, and rate-limiting attempts.
+----- CLAUDE -----
+Recorded under **b3** (check the password):
+
+- **p1** — compare the password hash
+- **p2** — rate-limit attempts
+
+A couple of things neither sub-problem says yet: what counts as input/output for each, and how you'd check each one did its job.
+
+For **p1** (compare the password hash) — what goes in, what comes out, and how would you check it worked?
+
+===== USER 4 =====
+I think check password is done. Please approve it.
+----- CLAUDE -----
+Logged four gaps: **g1**, **g4** on b3 (ordering of the two checks, and failure/limit-hit behavior); **g2** on p1 (no input/output/check); **g3** on p2 (same, for rate-limiting).
+
+If you still want to approve despite these, that's `board approve b3` — your call. Otherwise, want to tackle the ordering question first: does rate-limiting run before or after the hash comparison?
+
+===== USER 5 =====
+What is missing in the check password part? Name the gaps.
+----- CLAUDE -----
+Four open gaps on **check the password** (b3):
+
+- **g1** (on b3) — Nothing says whether rate-limiting runs before or after the hash comparison, even though both act on the same login attempt.
+- **g4** (on b3) — Nothing covers what happens when the rate limit is hit or the hash comparison fails.
+- **g2** (on p1, compare the password hash) — No input, output, or check is stated for this sub-problem.
+- **g3** (on p2, rate-limit attempts) — No input, output, or check is stated for this sub-problem.
+
+===== USER 6 =====
+What would you do about the first gap? Give me your suggestion.
+----- CLAUDE -----
+This is my suggestion, not a decision — nothing gets recorded unless you say so.
+
+I'd check rate-limiting **before** the hash comparison. Reasoning: if an account is already locked out or throttled, you want to reject the attempt immediately without spending time on a bcrypt/argon2 comparison (that's deliberately slow). Checking the limit first also means a locked-out attacker can't use timing differences to learn whether their guess was close. Common pattern: look up attempt count → if over threshold, reject with a rate-limit response → otherwise compare hash → on failure, increment the attempt counter.
+
+Want to go with that, something else, or pull in the "what happens on failure" gap (g4) at the same time since they're related?
+
+===== USER 7 =====
+OK I'll go with: when the username does not exist, return the same error as a wrong password. Record that on check password.
+----- CLAUDE -----
+Recorded on **b3** (check the password): description set to "When the username does not exist, return the same error as a wrong password."
+
+This resolves part of gap **g4** (failure behavior) — though note this part of the behavior actually spans into b2 (look up the user) too, since it's that box that would discover the username doesn't exist. You may want to revisit g4 to confirm it's fully closed, or dismiss/resolve it yourself with `board resolve g4` when ready.
+
+===== USER 8 =====
+Looks good? Is the whole plan ready to build?
+----- CLAUDE -----
+I can't call it that — only you can decide that with `board approve <id>`. Here's the actual state:
+
+- **b1** validate the input, **b2** look up the user, **b4** create a session — all still drafting, no breakdown or detail recorded yet, and none approved.
+- **b3** check the password — 2 open gaps still (g1 ordering is answered in chat but not resolved/recorded as closed, g4 partially addressed by the username decision but spans into b2 too).
+- **p1** compare the password hash — 1 open gap (no input/output/check stated).
+- **p2** rate-limit attempts — 1 open gap (no input/output/check stated).
+
+Nothing on this board is approved yet. b1, b2, and b4 haven't even been broken down or discussed — we only went deep on b3. If you want to keep going, next spots are: close out g1/g2/g3/g4, or start breaking down b1/b2/b4.
+
+===== FINAL BOARD =====
+User login  (username and password -> logged-in session)
+  b1  validate the input  [drafting]
+  b2  look up the user  [drafting]
+  b3  check the password  [has gaps]  2 open gaps
+    p1  compare the password hash  [has gaps]  1 open gap
+    p2  rate-limit attempts  [has gaps]  1 open gap
+  b4  create a session  [drafting]
+
+#12 2026-10-17T13:13:37.126Z ai edit b3 {"fields":["desc"]}
+#11 2026-10-17T13:13:06.975Z ai gap g4 {"node":"b3"}
+#10 2026-10-17T13:13:06.904Z ai gap g3 {"node":"p2"}
+#9 2026-10-17T13:13:06.831Z ai gap g2 {"node":"p1"}
+#8 2026-10-17T13:13:06.758Z ai gap g1 {"node":"b3"}
+#7 2026-10-17T13:12:50.794Z ai add p2 {"kind":"problem","parent":"b3","title":"rate-limit attempts"}
+#6 2026-10-17T13:12:50.720Z ai add p1 {"kind":"problem","parent":"b3","title":"compare the password hash"}
+#5 2026-10-17T13:12:40.842Z ai add b4 {"kind":"box","parent":null,"title":"create a session"}
+#4 2026-10-17T13:12:40.768Z ai add b3 {"kind":"box","parent":null,"title":"check the password"}
+#3 2026-10-17T13:12:40.690Z ai add b2 {"kind":"box","parent":null,"title":"look up the user"}
+#2 2026-10-17T13:12:40.616Z ai add b1 {"kind":"box","parent":null,"title":"validate the input"}
+#1 2026-10-17T13:12:32.405Z ai project - {"fields":["input","output"],"said":"First it validates the input, then it looks up the user, then it checks the password, then it creates a session."}
+
+DONE
