@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "UserPromptExpansion": [
+      { "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/bin/board.mjs\" guard prompt" }] }
+    ],
+    "PreToolUse": [
+      { "matcher": "Bash", "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/bin/board.mjs\" guard bash" }] },
+      { "matcher": "Write|Edit|MultiEdit|NotebookEdit", "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/bin/board.mjs\" guard write" }] }
+    ],
+    "SessionStart": [
+      { "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/bin/board.mjs\" guard session-start" }] }
+    ]
+  }
+}

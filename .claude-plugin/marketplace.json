@@ -1,0 +1,14 @@
+{
+  "name": "brick",
+  "owner": {
+    "name": "Show Wai Yan"
+  },
+  "plugins": [
+    {
+      "name": "brick",
+      "source": "./",
+      "description": "Break a problem down yourself; the AI is critic and scribe."
+    }
+  ],
+  "description": "Break a problem down yourself; the AI is critic and scribe."
+}
