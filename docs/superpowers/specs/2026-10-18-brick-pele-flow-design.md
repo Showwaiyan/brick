@@ -71,7 +71,22 @@ The gap command chips (`/brick:resolve g1 <note>`) are removed for the same reas
 
 ### 4.6 The library
 
-Vendored as `vendor/pele/pele.js` with its LICENSE and a `VERSION` file; exact version pinned, no `npm install` for users, no dependency in `package.json`. Loaded with a dynamic `import()` inside `drawSvg`, so the CLI and hooks start as fast as before.
+A normal npm dependency: `"dependencies": { "pele": "1.6.0" }` in `package.json` (exact version) plus a committed `package-lock.json`. Nothing is vendored.
+
+Per the Claude Code plugin docs (Plugin loading reference, "Node.js package dependencies"), when a plugin is installed from a marketplace, Claude Code copies it into its cache and installs the plugin's Node.js dependencies there automatically. The conditions, which we meet:
+
+- `package.json` and an npm lockfile (`package-lock.json`, lockfileVersion 2 or 3) at the plugin root;
+- registry packages only, pinned to exact versions in the lockfile, no `overrides`;
+- no lifecycle scripts run (pele is plain JavaScript and needs none);
+- 60-second limit; `npm` must be on the user's PATH (Node 20+ already is).
+
+Consequences:
+
+- Users install nothing by hand. The install runs again on every plugin update.
+- `--plugin-dir` loads the folder in place and does not install, so in a checkout we run `npm install` ourselves.
+- If the automatic install fails or is skipped, the plugin still loads but pele is missing. `drawSvg` loads pele with a dynamic `import()` inside `try`, returns `null` on failure, and the page shows the "could not draw" notice. `/brick:open` also tells the user to run `npm install` in the plugin folder.
+- Taking a fix: `npm update pele` (or bump the pin), `npm test`, bump the plugin version, release. Users get it on their next plugin update, and the lockfile keeps any untested pele version from reaching them.
+- The lazy `import()` keeps the CLI and hooks as fast as before.
 
 ## 5. Tasks
 
@@ -85,7 +100,8 @@ Vendored as `vendor/pele/pele.js` with its LICENSE and a `VERSION` file; exact v
 - **Pan and zoom feels bad.** It is our code, so it is tunable, and task 4 tests it by hand. The fallback is pele's own `enableZoom`, at the cost of the library in the page.
 - **Looks no better.** Not merged.
 - **Estimated text widths in Node.** Boxes may clip text slightly. Mitigated with a wider minimum; checked in task 4.
-- **Young library.** Pinned and vendored.
+- **Young library.** Pinned exactly and locked.
+- **Automatic install not verified here.** It is documented, but we have not run a real marketplace install of brick with a dependency. Task 4 includes one: install from the repo as a marketplace and check that `node_modules/pele` appears in the plugin cache.
 - **Page-inserted markup.** The SVG is inserted as markup instead of built with `createElement`. It comes from our build step, pele escapes diagram text, and the hostile-title test covers it.
 
 ## 7. Not decided here
