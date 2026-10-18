@@ -279,3 +279,12 @@ test('a gap that names a recorded file must carry --seen', async () => {
   assert.match(execute(dir, [...named, '--seen', 's1']), /raised b1\.g1/);
   assert.match(execute(dir, ['ai', 'gap', 'b1', '--missing', 'Nothing says what happens on a repeat.']), /raised b1\.g2/);
 });
+
+test('brief: when a note is gone or changed it tells the AI to say so and read the file again', async () => {
+  const { text } = await import('../src/text.mjs').then((m) => ({ text: m }));
+  const { cwd, dir } = await withNotes();
+  const ctx = { root: cwd };
+  assert.ok(!/out of date/.test(text.brief(load(dir), ctx)));
+  fs.rmSync(path.join(cwd, 'src/users.js'));
+  assert.match(text.brief(load(dir), ctx), /\nSome code notes are out of date .*read those files again.*--replaces <note id>\./);
+});

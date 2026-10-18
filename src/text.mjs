@@ -49,6 +49,13 @@ export function seenSummaryText(data, root) {
   const s = seenSummary(data, root);
   return `${s.total} note${s.total === 1 ? '' : 's'} (${s.gone} gone, ${s.changed} changed)`;
 }
+// When a note's file is gone or changed, the brief says what to do about it.
+const staleRule = (data, root) => {
+  const s = seenSummary(data, root);
+  return s.gone || s.changed
+    ? ['Some code notes are out of date (marked gone or changed in board ls). Say so to the user, read those files again before you rely on them, and record a new note with board ai seen --replaces <note id>.']
+    : [];
+};
 const hasNotes = (data) => Object.keys(data.seen || {}).length > 0;
 
 // Depth-first list of [node, depth], children in order (superseded stay in place).
@@ -160,7 +167,7 @@ export function brief(data, ctx = null) {
     ...(many ? [boardsLine(ctx), BOARD_RULES] : []),
     `Nodes: ${count.approved} approved, ${count.drafting} drafting, ${count.has_gaps} with gaps, ${count.superseded} superseded`,
     `Open gaps: ${open.length}${open.length ? ` (${open.map((g) => `${fid(data, g.id)} on ${fid(data, g.node)}`).join(', ')})` : ''}`,
-    ...(ctx?.root && hasNotes(data) ? [`Code seen: ${seenSummaryText(data, ctx.root)}`] : []),
+    ...(ctx?.root && hasNotes(data) ? [`Code seen: ${seenSummaryText(data, ctx.root)}`, ...staleRule(data, ctx.root)] : []),
     `Next: ${nextStep(data)}`,
     `Tree: ${T} ls`,
     'Discussion rules: never volunteer ideas, options, designs or recommendations. When the user states a flow step, a sub-problem or a contract, record it at once in their words (board ai add, edit or project with --user-said, after loading the brick:decompose skill), say the id, then ask one question. Run board ls first, and edit a node that already exists instead of adding a duplicate. When the user names a step or node you do not remember, look it up with board ls before saying you do not know it.',
