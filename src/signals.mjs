@@ -2,6 +2,7 @@
 // Facts and flags, never a verdict: the words "ready" and "complete" are not used here.
 import { children, activeChildren, openGaps, displayState } from './model.mjs';
 import { fid } from './ids.mjs';
+import { seenList } from './seen.mjs';
 
 // Guides, not rules. All the limits live here.
 export const LIMITS = { topMin: 3, topMax: 9, depthMax: 4, siblingsMax: 9 };
@@ -75,7 +76,7 @@ export function boardSignals(data) {
 }
 
 // The text `board check` prints.
-export function checkText(data, id) {
+export function checkText(data, id, root = null) {
   let head;
   let list;
   if (id) {
@@ -89,5 +90,6 @@ export function checkText(data, id) {
   }
   const names = { contract: 'contract', purpose: 'purpose', children: 'sub-problems', siblings: 'siblings', depth: 'depth', gaps: 'open gaps', draft: 'provenance', top: 'top level', contracts: 'contracts', drafts: 'AI drafts', superseded: 'state' };
   const lines = list.map((s) => `  ${s.flag ? 'flag' : 'ok  '}  ${names[s.key] || s.key}: ${s.text}`);
-  return [head, ...lines, 'These are signals for you to weigh, not a verdict.'].join('\n');
+  const noNotes = id ? !seenList(data, root, id).length : !Object.keys(data.seen || {}).length;
+  return [head, ...lines, ...(noNotes ? ['Code seen: none'] : []), 'These are signals for you to weigh, not a verdict.'].join('\n');
 }

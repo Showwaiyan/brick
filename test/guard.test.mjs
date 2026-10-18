@@ -181,3 +181,13 @@ test('guard bash: boards and use are allowed, and --board cannot hide a human-on
   assert.equal(r.status, 1);
   assert.match(r.stderr, /after the command/);
 });
+
+test('session-start: the brief carries the Code seen line for the active board', () => {
+  const dir = tmp();
+  spawnSync('node', [BIN, 'init', 'Proj'], { cwd: dir });
+  fs.writeFileSync(path.join(dir, 'a.js'), 'x\n');
+  spawnSync('node', [BIN, 'ai', 'seen', '--path', 'a.js', '--note', 'a file'], { cwd: dir });
+  assert.match(sessionStart(dir, () => true), /\nCode seen: 1 note \(0 gone, 0 changed\)\n/);
+  fs.rmSync(path.join(dir, 'a.js'));
+  assert.match(sessionStart(dir, () => true), /Code seen: 1 note \(1 gone, 0 changed\)/);
+});

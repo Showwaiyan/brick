@@ -3,6 +3,7 @@ import { children, displayState, openGaps, nextCommands } from './model.mjs';
 import { approveCheck } from './rules.mjs';
 import { TOOL_NAME, PLUGIN_NAME } from './store.mjs';
 import { fid } from './ids.mjs';
+import { seenList, seenSummary } from './seen.mjs';
 
 const T = TOOL_NAME;
 const LABEL = { approved: 'approved', drafting: 'drafting', has_gaps: 'has gaps', superseded: 'superseded' };
@@ -41,6 +42,15 @@ Read-only (human or AI):
   ${T} open [--quiet]      rebuild it and open it in your browser
 `;
 
+// Code seen: one line per note, and the "N notes (G gone, C changed)" summary.
+const noteState = (data, n) => (n.replaced_by ? `replaced by ${fid(data, n.replaced_by)}` : n.state);
+const noteLine = (data, n, indent) => `${indent}${fid(data, n.id)}  ${n.path}${n.line ? `:${n.line}` : ''}  ${n.note}  [${noteState(data, n)}]`;
+export function seenSummaryText(data, root) {
+  const s = seenSummary(data, root);
+  return `${s.total} note${s.total === 1 ? '' : 's'} (${s.gone} gone, ${s.changed} changed)`;
+}
+const hasNotes = (data) => Object.keys(data.seen || {}).length > 0;
+
 // Depth-first list of [node, depth], children in order (superseded stay in place).
 function walk(data, parent = null, depth = 0) {
   return children(data, parent).flatMap((n) => [[n, depth], ...walk(data, n.id, depth + 1)]);
@@ -52,11 +62,12 @@ function postOrder(data, parent = null) {
 }
 
 // The whole tree as indented text.
-export function ls(data) {
+export function ls(data, root = null) {
   const p = data.project;
   const io = p.input || p.output ? `  (${p.input || '-'} -> ${p.output || '-'})` : '';
   const F = (id) => fid(data, id);
   const lines = [`${p.name}${p.key ? ` [${p.key}]` : ''}${io}`];
+  if (hasNotes(data)) lines.push(`  code seen: ${seenSummaryText(data, root)}`, ...seenList(data, root, null).map((n) => noteLine(data, n, '    ')));
   for (const [n, depth] of walk(data)) {
     const state = displayState(data, n.id);
     const gaps = openGaps(data, n.id).length;
@@ -80,7 +91,7 @@ function eventLine(e, key = null) {
 }
 
 // One node in full.
-export function show(data, id) {
+export function show(data, id, root = null) {
   const n = data.nodes[id];
   if (!n) throw new Error(`There is no node "${id}". Run: ${T} ls`);
   const F = (x) => fid(data, x);
@@ -91,8 +102,10 @@ export function show(data, id) {
   const gaps = Object.values(data.gaps).filter((g) => g.node === id);
   if (gaps.length) {
     out.push('gaps:');
-    for (const g of gaps) out.push(`  ${F(g.id)} [${g.status}] ${g.kind ? `(${g.kind}) ` : ''}${g.missing}${g.where ? ` (${g.where})` : ''}${g.note ? ` - ${g.note}` : ''}`);
+    for (const g of gaps) out.push(`  ${F(g.id)} [${g.status}] ${g.kind ? `(${g.kind}) ` : ''}${g.missing}${g.where ? ` (${g.where})` : ''}${g.note ? ` - ${g.note}` : ''}${g.seen && data.seen?.[g.seen] ? `  because: ${data.seen[g.seen].path}` : ''}`);
   }
+  const notes = seenList(data, root, id);
+  out.push(notes.length ? 'code seen:' : 'code seen: none', ...notes.map((x) => noteLine(data, x, '  ')));
   if (n.superseded) {
     const s = n.superseded;
     out.push(`superseded: ${s.reason}${s.by ? `  (replaced by ${F(s.by)})` : ''}${s.cascade_from ? `  (with ${F(s.cascade_from)})` : ''}`);
@@ -141,12 +154,13 @@ export function brief(data, ctx = null) {
   const count = { approved: 0, drafting: 0, has_gaps: 0, superseded: 0 };
   for (const id of Object.keys(data.nodes)) count[displayState(data, id)] += 1;
   const open = Object.values(data.gaps).filter((g) => g.status === 'open');
-  const many = ctx && ctx.boards.length > 1;
+  const many = ctx?.boards && ctx.boards.length > 1;
   return [
     `Project: ${data.project.name}${data.project.key ? ` (board ${data.project.key})` : ''}`,
     ...(many ? [boardsLine(ctx), BOARD_RULES] : []),
     `Nodes: ${count.approved} approved, ${count.drafting} drafting, ${count.has_gaps} with gaps, ${count.superseded} superseded`,
     `Open gaps: ${open.length}${open.length ? ` (${open.map((g) => `${fid(data, g.id)} on ${fid(data, g.node)}`).join(', ')})` : ''}`,
+    ...(ctx?.root && hasNotes(data) ? [`Code seen: ${seenSummaryText(data, ctx.root)}`] : []),
     `Next: ${nextStep(data)}`,
     `Tree: ${T} ls`,
     'Discussion rules: never volunteer ideas, options, designs or recommendations. When the user states a flow step, a sub-problem or a contract, record it at once in their words (board ai add, edit or project with --user-said, after loading the brick:decompose skill), say the id, then ask one question. Run board ls first, and edit a node that already exists instead of adding a duplicate.',

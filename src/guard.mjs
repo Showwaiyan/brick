@@ -7,6 +7,7 @@ import { brief, briefNoActive } from './text.mjs';
 import { renderFile } from './render.mjs';
 import { runSlash } from './slash.mjs';
 import { openFile } from './open.mjs';
+import { repoRoot } from './seen.mjs';
 
 const T = TOOL_NAME;
 
@@ -92,7 +93,7 @@ export function sessionStart(cwd, opener = openFile) {
     try { config = JSON.parse(fs.readFileSync(path.join(project.dir, 'config.json'), 'utf8')); } catch { /* use defaults */ }
     const shown = boards.find((b) => b.key === active);
     if (config.openBrowserOnSessionStart && shown) opener(renderFile(shown.dir));
-    return shown ? brief(load(shown.dir), { boards, active }) : briefNoActive({ boards });
+    return shown ? brief(load(shown.dir), { boards, active, root: repoRoot(shown.dir) }) : briefNoActive({ boards });
   } catch {
     return '';
   }

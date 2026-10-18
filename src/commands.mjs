@@ -220,15 +220,15 @@ const READING = {
     if (openFile(file)) return values.quiet ? '' : `opened ${file}`;
     return values.quiet ? '' : `Could not open a browser. The page is here: ${file}`;
   },
-  ls: (data) => ls(data),
-  show: (data, argv) => show(data, parse(argv, {}, 'show <id>', 1).positionals[0]),
-  check(data, argv) {
+  ls: (data, argv, dir) => ls(data, repoRoot(dir)),
+  show: (data, argv, dir) => show(data, parse(argv, {}, 'show <id>', 1).positionals[0], repoRoot(dir)),
+  check(data, argv, dir) {
     const { positionals } = parseArgs({ args: argv, allowPositionals: true, strict: true });
     if (positionals.length > 1) throw new Error(`Usage: ${T} check [id]`);
-    return checkText(data, positionals[0]);
+    return checkText(data, positionals[0], repoRoot(dir));
   },
   log: (data, argv) => log(data, Number(parse(argv, { last: { type: 'string' } }, 'log [--last N]', 0).values.last || 20)),
-  brief: (data) => brief(data),
+  brief: (data, argv, dir) => brief(data, { root: repoRoot(dir) }),
 };
 
 // Looks up an `ai` subcommand, or explains what the AI may run.

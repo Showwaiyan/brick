@@ -72,6 +72,7 @@ export function addSeen(data, root, opts, now) {
 
 // 'ok', 'changed' (the file differs from when it was seen) or 'gone', from the files as they are now.
 export function seenState(root, note) {
+  if (!root) return 'ok';
   const abs = path.join(root, note.path);
   let st;
   try { st = fs.statSync(abs); } catch { return 'gone'; }

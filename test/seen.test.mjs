@@ -196,3 +196,74 @@ test('note text with markup is stored as text', () => {
   assert.equal(d.seen.s1.note, '<script>alert(1)</script> & "q"');
   validate(d);
 });
+
+// ---------- text output ----------
+
+// A board folder `dir` with a repo around it, a box b1 and notes: s1 project-level (users.js), s2 on b1 (package.json, line 4).
+async function withNotes() {
+  const { cwd, dir } = await newProject('Login');
+  fs.mkdirSync(path.join(cwd, 'src'), { recursive: true });
+  fs.writeFileSync(path.join(cwd, 'src/users.js'), 'x\n');
+  fs.writeFileSync(path.join(cwd, 'package.json'), '{}\n');
+  execute(dir, ['ai', 'add', 'box', '--title', 'Check password', '--user-said', 'first it checks the password']);
+  execute(dir, ['ai', 'seen', '--path', 'src/users.js', '--note', 'users module exists']);
+  execute(dir, ['ai', 'seen', '--path', 'package.json', '--note', 'express app', '--node', 'b1', '--line', '4']);
+  return { cwd, dir };
+}
+
+test('ls: a summary and the project notes, only when notes exist', async () => {
+  const { cwd, dir } = await withNotes();
+  const out = execute(dir, ['ls']);
+  assert.match(out, /^.*\n  code seen: 2 notes \(0 gone, 0 changed\)\n    LOGIN-s1  src\/users\.js  users module exists  \[ok\]\n/);
+  assert.ok(!out.includes('express app'), 'node notes are listed by show');
+  fs.rmSync(path.join(cwd, 'src/users.js'));
+  assert.match(execute(dir, ['ls']), /code seen: 2 notes \(1 gone, 0 changed\)\n    LOGIN-s1 .*\[gone\]/);
+  const empty = await newProject('Other');
+  assert.ok(!execute(empty.dir, ['ls']).includes('code seen'));
+});
+
+test('show: the node notes with their state, or "none"; a gap says what it is because of', async () => {
+  const { cwd, dir } = await withNotes();
+  fs.appendFileSync(path.join(cwd, 'package.json'), '\n');
+  const out = execute(dir, ['show', 'b1']);
+  assert.match(out, /code seen:\n  LOGIN-s2  package\.json:4  express app  \[changed\]/);
+  execute(dir, ['ai', 'gap', 'b1', '--missing', 'Nothing says whether this reuses the users module.', '--seen', 's1']);
+  assert.match(execute(dir, ['show', 'b1']), /LOGIN-b1\.g1 \[open\] Nothing says whether this reuses the users module\. - because: src\/users\.js|Nothing says whether this reuses the users module\..*because: src\/users\.js/);
+  execute(dir, ['ai', 'add', 'box', '--title', 'Other', '--user-said', 'then something else']);
+  assert.match(execute(dir, ['show', 'b2']), /code seen: none/);
+});
+
+test('a replaced note says so, and the new one is current', async () => {
+  const { dir } = await withNotes();
+  execute(dir, ['ai', 'seen', '--path', 'package.json', '--note', 'express app, v5', '--node', 'b1', '--replaces', 's2']);
+  const out = execute(dir, ['show', 'b1']);
+  assert.match(out, /LOGIN-s2 .*\[replaced by LOGIN-s3\]/);
+  assert.match(out, /LOGIN-s3 .*\[ok\]/);
+});
+
+test('check: "Code seen: none" when the node has no notes', async () => {
+  const { dir } = await withNotes();
+  execute(dir, ['ai', 'add', 'box', '--title', 'Other', '--user-said', 'then something else']);
+  assert.match(execute(dir, ['check', 'b2']), /Code seen: none/);
+  assert.ok(!/Code seen: none/.test(execute(dir, ['check', 'b1'])));
+  assert.ok(!/Code seen: none/.test(execute(dir, ['check'])));
+});
+
+test('log prints the seen event with the path', async () => {
+  const { dir } = await withNotes();
+  assert.match(execute(dir, ['log']), /ai seen LOGIN-b1 .*package\.json/);
+  assert.match(execute(dir, ['log']), /ai seen - .*users\.js/);
+});
+
+test('brief: a Code seen line only when notes exist, with gone and changed counts', async () => {
+  const { text } = await import('../src/text.mjs').then((m) => ({ text: m }));
+  const { cwd, dir } = await withNotes();
+  const root = cwd;
+  assert.match(text.brief(load(dir), { boards: [{ key: 'LOGIN', name: 'Login' }], active: 'LOGIN', root }), /\nCode seen: 2 notes \(0 gone, 0 changed\)\n/);
+  fs.rmSync(path.join(cwd, 'src/users.js'));
+  fs.appendFileSync(path.join(cwd, 'package.json'), '\n');
+  assert.match(execute(dir, ['brief']), /\nCode seen: 2 notes \(1 gone, 1 changed\)\n/);
+  const fresh = await newProject('Fresh');
+  assert.ok(!execute(fresh.dir, ['brief']).includes('Code seen'));
+  assert.ok(!text.brief(load(fresh.dir)).includes('Code seen'));
+});
