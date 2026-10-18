@@ -6,6 +6,7 @@ import { load, TOOL_NAME } from './store.mjs';
 import { children, activeChildren, displayState, openGaps } from './model.mjs';
 import { eventsFor } from './text.mjs';
 import { addDiagrams } from './flow.mjs';
+import { compareIds } from './ids.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
@@ -22,7 +23,7 @@ export function pageData(data, now) {
   const nodes = {};
   for (const n of Object.values(data.nodes)) {
     const gaps = Object.values(data.gaps).filter((g) => g.node === n.id)
-      .sort((a, b) => (a.status === 'open' ? 0 : 1) - (b.status === 'open' ? 0 : 1) || Number(a.id.slice(1)) - Number(b.id.slice(1)));
+      .sort((a, b) => (a.status === 'open' ? 0 : 1) - (b.status === 'open' ? 0 : 1) || compareIds(a.id, b.id));
     nodes[n.id] = {
       id: n.id, kind: n.kind, parent: n.parent, title: n.title, description: n.description,
       contract: n.contract, source: n.source, said: n.said, superseded: n.superseded,

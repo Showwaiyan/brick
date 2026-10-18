@@ -72,11 +72,19 @@ test('restore: finds directly superseded nodes by id or title', async () => {
 
 test('resolve and dismiss: a gap id, or a node title with exactly one open gap', async () => {
   const one = ({ gap }) => gap('b3');
-  assert.deepEqual(await ask('resolve', 'g1 handled in the hash step', one), { argv: ['gap', 'resolve', 'g1', '--note=handled in the hash step'] });
-  assert.deepEqual(await ask('dismiss', 'check password not a real gap', one), { argv: ['gap', 'dismiss', 'g1', '--why=not a real gap'] });
-  assert.match((await ask('dismiss', 'g1', one)).needs, /a reason for dismissing g1/);
-  assert.match((await ask('resolve', 'g1', one)).needs, /a note for resolving g1/);
+  assert.deepEqual(await ask('resolve', 'b3.g1 handled in the hash step', one), { argv: ['gap', 'resolve', 'b3.g1', '--note=handled in the hash step'] });
+  assert.deepEqual(await ask('dismiss', 'check password not a real gap', one), { argv: ['gap', 'dismiss', 'b3.g1', '--why=not a real gap'] });
+  assert.match((await ask('dismiss', 'b3.g1', one)).needs, /a reason for dismissing b3\.g1/);
+  assert.match((await ask('resolve', 'b3.g1', one)).needs, /a note for resolving b3\.g1/);
   const two = await ask('dismiss', 'check password not real', ({ gap }) => { gap('b3'); gap('b3'); });
-  assert.match(two.needs, /g1 .*g2/s);
+  assert.match(two.needs, /b3\.g1 .*b3\.g2/s);
   assert.match((await ask('dismiss', 'validate input nope', one)).needs, /no open gaps|which gap/i);
+});
+
+test('nested ids are matched in nodes, gaps and "replaced by"', async () => {
+  const deep = ({ x, gap }) => { x('add', 'problem', 'Salt it', '--parent', 'p1'); x('add', 'problem', 'Pepper it', '--parent', 'p1.1'); gap('p1.1'); };
+  assert.deepEqual(await ask('approve', 'p1.1.1', deep), { argv: ['approve', 'p1.1.1'] });
+  assert.deepEqual(await ask('approve', 'P1.1.', deep), { argv: ['approve', 'p1.1'] });
+  assert.deepEqual(await ask('resolve', 'p1.1.g1 handled', deep), { argv: ['gap', 'resolve', 'p1.1.g1', '--note=handled'] });
+  assert.deepEqual(await ask('supersede', 'p1.1.1 replaced by p2, dropped', deep), { argv: ['supersede', 'p1.1.1', '--why=dropped', '--by=p2'] });
 });

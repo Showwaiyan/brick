@@ -2,6 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
+import { parentOf } from './ids.mjs';
 
 // The one place the tool's name lives. The data folder is derived from it.
 export const TOOL_NAME = 'board';
@@ -72,10 +73,10 @@ export function findProject(cwd = process.cwd()) {
 // ---------- data helpers ----------
 
 // A brand-new, empty data file.
-export function emptyData(name, input = null, output = null, now = new Date().toISOString()) {
+export function emptyData(name, input = null, output = null, now = new Date().toISOString(), key = null) {
   return {
     version: 1,
-    project: { name, input, output, created_at: now },
+    project: { name, input, output, created_at: now, ...(key ? { key } : {}) },
     counters: { b: 0, p: 0, g: 0 },
     nodes: {},
     gaps: {},
@@ -87,6 +88,24 @@ export function emptyData(name, input = null, output = null, now = new Date().to
 export function nextId(data, prefix) {
   data.counters[prefix] += 1;
   return `${prefix}${data.counters[prefix]}`;
+}
+
+// The id for a new node. Boxes and problems directly under a box take the next flat number;
+// deeper nodes take their parent's id plus the next number among that parent's children.
+export function newNodeId(data, kind, parent) {
+  if (kind === 'box') return nextId(data, 'b');
+  if (data.nodes[parent].kind === 'box') return nextId(data, 'p');
+  return `${parent}.${highest(Object.keys(data.nodes), `${parent}.`) + 1}`;
+}
+
+// The id for a new gap on a node: the node's id, ".g", and the next number for that node.
+export function newGapId(data, nodeId) {
+  return `${nodeId}.g${highest(Object.keys(data.gaps), `${nodeId}.g`) + 1}`;
+}
+
+// The highest number that follows `prefix` in ids like `<prefix><digits>` (0 if none).
+function highest(ids, prefix) {
+  return Math.max(0, ...ids.filter((id) => id.startsWith(prefix) && /^\d+$/.test(id.slice(prefix.length))).map((id) => Number(id.slice(prefix.length))));
 }
 
 // Appends an event with the next sequence number. Events are never edited.
@@ -118,8 +137,12 @@ export function validate(data) {
     const slot = `${n.parent}#${n.order}`;
     if (siblings.has(slot)) errs.push(`${key}: order ${n.order} already used by ${siblings.get(slot)}`);
     siblings.set(slot, key);
-    const num = Number(key.slice(1));
-    if (data.counters[key[0]] === undefined || data.counters[key[0]] < num) errs.push(`${key}: counter is behind`);
+    if (key.includes('.')) {
+      if (parentOf(key) !== n.parent) errs.push(`${key}: id does not match its parent`);
+    } else {
+      const num = Number(key.slice(1));
+      if (data.counters[key[0]] === undefined || data.counters[key[0]] < num) errs.push(`${key}: counter is behind`);
+    }
   }
   for (const key of Object.keys(nodes)) {
     const seen = new Set();
@@ -132,7 +155,9 @@ export function validate(data) {
     if (g.id !== key) errs.push(`gap key ${key} does not match its id ${g.id}`);
     if (!nodes[g.node]) errs.push(`${key}: node ${g.node} does not exist`);
     if (!GAP_STATUSES.includes(g.status)) errs.push(`${key}: bad status ${g.status}`);
-    if (!(data.counters.g >= Number(key.slice(1)))) errs.push(`${key}: counter is behind`);
+    if (key.includes('.')) {
+      if (parentOf(key) !== g.node) errs.push(`${key}: id does not match its node`);
+    } else if (!(data.counters.g >= Number(key.slice(1)))) errs.push(`${key}: counter is behind`);
   }
   (data.events || []).forEach((e, i) => {
     if (e.seq !== i + 1) errs.push(`event ${i + 1}: seq is ${e.seq}`);

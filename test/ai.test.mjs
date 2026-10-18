@@ -60,15 +60,15 @@ test('ask-first gate: no gap on a node without the user\'s content', async () =>
   const gap = ['ai', 'gap', 'b1', '--missing', 'Nothing says what happens on error.'];
   assert.throws(() => execute(dir, gap), /no content from the user yet\. Ask the user for their own attempt first/);
   mutate(dir, (d) => { d.nodes.b1.said = ['they said so']; });
-  assert.equal(execute(dir, gap), 'raised g1 on b1');
-  assert.equal(load(dir).gaps.g1.status, 'open');
+  assert.equal(execute(dir, gap), 'raised b1.g1 on b1');
+  assert.equal(load(dir).gaps['b1.g1'].status, 'open');
 });
 
 test('gaps are allowed on human nodes, refused on superseded ones', async () => {
   const dir = await newBoard();
   execute(dir, ['add', 'box', 'One']);
   execute(dir, ['ai', 'gap', 'b1', '--missing', 'Nothing defines the limits.', '--where', 'before b2']);
-  assert.equal(load(dir).gaps.g1.where, 'before b2');
+  assert.equal(load(dir).gaps['b1.g1'].where, 'before b2');
   execute(dir, ['supersede', 'b1', '--why', 'x']);
   assert.throws(() => execute(dir, ['ai', 'gap', 'b1', '--missing', 'Nothing defines the limits.']), /superseded/);
 });

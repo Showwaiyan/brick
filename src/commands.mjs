@@ -1,6 +1,6 @@
 // Commands: parse arguments, call the rules, return one short line of text.
 import { parseArgs } from 'node:util';
-import { findProject, load, mutate, nextId, addEvent, TOOL_NAME, DATA_DIR, PLUGIN_NAME } from './store.mjs';
+import { findProject, load, mutate, newNodeId, addEvent, TOOL_NAME, DATA_DIR, PLUGIN_NAME } from './store.mjs';
 import { children } from './model.mjs';
 import { approve, reopen, supersede, restore, closeGap, needNode, nextOrder, blank, raiseGapChecked, lintSaid } from './rules.mjs';
 import { ls, show, log, brief, HELP } from './text.mjs';
@@ -52,7 +52,7 @@ export function addNode(data, f, now) {
     order = a.order + 1;
     for (const s of children(data, parent)) if (s.order >= order) s.order += 1;
   }
-  const id = nextId(data, f.kind === 'box' ? 'b' : 'p');
+  const id = newNodeId(data, f.kind, parent);
   const contract = {};
   for (const k of CONTRACT) contract[k] = clean(f.contract?.[k]);
   data.nodes[id] = {

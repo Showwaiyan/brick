@@ -22,13 +22,13 @@ test('each command works in plain words', async () => {
   assert.equal(runSlash('brick:reopen', 'b1 I changed my mind', cwd), '[brick] reopened b1');
   execute(dir, ['ai', 'gap', 'b1', '--missing', 'Nothing defines the thing.']);
   execute(dir, ['ai', 'gap', 'b2', '--missing', 'It is unclear what happens on error.']);
-  assert.match(runSlash('brick:resolve', 'g1 handled in the next step', cwd), /^\[brick\] resolved g1/);
-  assert.match(runSlash('brick:dismiss', 'two is not a real gap', cwd), /^\[brick\] dismissed g2/);
+  assert.match(runSlash('brick:resolve', 'b1.g1 handled in the next step', cwd), /^\[brick\] resolved b1\.g1/);
+  assert.match(runSlash('brick:dismiss', 'two is not a real gap', cwd), /^\[brick\] dismissed b2\.g1/);
   assert.match(runSlash('brick:supersede', 'b1 replaced by b2, the client dropped it', cwd), /^\[brick\] superseded b1/);
   const d = load(dir);
   assert.equal(d.nodes.b1.superseded.by, 'b2');
   assert.equal(d.nodes.b1.superseded.reason, 'the client dropped it');
-  assert.equal(d.gaps.g1.note, 'handled in the next step');
+  assert.equal(d.gaps['b1.g1'].note, 'handled in the next step');
   assert.match(runSlash('brick:restore', 'one', cwd), /^\[brick\] restored b1/);
 });
 

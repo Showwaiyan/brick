@@ -26,8 +26,8 @@ test('approve refuses: open gap, unapproved child, leaf missing check, not draft
   x('approve', 'p1');
   assert.throws(() => x('approve', 'p1'), /is approved, not drafting/);
   gap('p2');
-  assert.throws(() => x('approve', 'p2'), /open gaps[\s\S]*g1/);
-  x('gap', 'resolve', 'g1', '--note', 'handled');
+  assert.throws(() => x('approve', 'p2'), /open gaps[\s\S]*p2\.g1/);
+  x('gap', 'resolve', 'p2.g1', '--note', 'handled');
   x('approve', 'p2');
   assert.equal(x('approve', 'b1'), 'approved b1');
 });
@@ -64,8 +64,8 @@ test('supersede cascades, dismisses gaps, and says nothing was undone', async ()
   assert.equal(d.nodes.p1.superseded.cascade_from, 'b1');
   assert.equal(d.nodes.p1.superseded.reason, 'parent b1 superseded');
   assert.equal(d.nodes.b1.superseded.reason, 'wrong approach');
-  assert.equal(d.gaps.g1.status, 'dismissed');
-  assert.equal(d.gaps.g1.note, 'node superseded');
+  assert.equal(d.gaps['p2.g1'].status, 'dismissed');
+  assert.equal(d.gaps['p2.g1'].note, 'node superseded');
 });
 
 test('superseding a child reopens an approved parent', async () => {
@@ -128,8 +128,8 @@ test('add refuses a parent that is approved or superseded, and bad shapes', asyn
 test('gap resolve and dismiss need their text and an open gap', async () => {
   const { x, gap } = await setup();
   gap('b1');
-  assert.throws(() => x('gap', 'resolve', 'g1'), /--note is required/);
-  assert.throws(() => x('gap', 'dismiss', 'g1'), /--why is required/);
-  assert.equal(x('gap', 'dismiss', 'g1', '--why', 'not real'), 'dismissed g1');
-  assert.throws(() => x('gap', 'resolve', 'g1', '--note', 'x'), /already dismissed/);
+  assert.throws(() => x('gap', 'resolve', 'b1.g1'), /--note is required/);
+  assert.throws(() => x('gap', 'dismiss', 'b1.g1'), /--why is required/);
+  assert.equal(x('gap', 'dismiss', 'b1.g1', '--why', 'not real'), 'dismissed b1.g1');
+  assert.throws(() => x('gap', 'resolve', 'b1.g1', '--note', 'x'), /already dismissed/);
 });

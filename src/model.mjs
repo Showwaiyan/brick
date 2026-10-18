@@ -1,5 +1,6 @@
 // Derived values. Nothing here is stored; it is all computed from tree.json.
 import { PLUGIN_NAME } from './store.mjs';
+import { compareIds, fid } from './ids.mjs';
 
 const S = `/${PLUGIN_NAME}:`; // slash-command prefix: these are for the human to type
 
@@ -24,7 +25,7 @@ export function isLeaf(data, id) {
 export function openGaps(data, id) {
   return Object.values(data.gaps)
     .filter((g) => g.node === id && g.status === 'open')
-    .sort((a, b) => Number(a.id.slice(1)) - Number(b.id.slice(1)));
+    .sort((a, b) => compareIds(a.id, b.id));
 }
 
 // What to show for a node. First match wins.
@@ -39,19 +40,20 @@ export function displayState(data, id) {
 export function nextCommands(data, id) {
   const n = data.nodes[id];
   const cmds = [];
+  const F = (x) => fid(data, x);
   if (n.status === 'superseded') {
-    if (n.superseded.cascade_from === null) cmds.push(`${S}restore ${id}`);
+    if (n.superseded.cascade_from === null) cmds.push(`${S}restore ${F(id)}`);
     return cmds;
   }
   if (n.status === 'drafting') {
     const gaps = openGaps(data, id);
-    if (gaps.length === 0) cmds.push(`${S}approve ${id}`);
+    if (gaps.length === 0) cmds.push(`${S}approve ${F(id)}`);
     for (const g of gaps) {
-      cmds.push(`${S}resolve ${g.id} <note>`);
-      cmds.push(`${S}dismiss ${g.id} <why>`);
+      cmds.push(`${S}resolve ${F(g.id)} <note>`);
+      cmds.push(`${S}dismiss ${F(g.id)} <why>`);
     }
   }
-  if (n.status === 'approved') cmds.push(`${S}reopen ${id} <why>`);
-  cmds.push(`${S}supersede ${id} <why>`);
+  if (n.status === 'approved') cmds.push(`${S}reopen ${F(id)} <why>`);
+  cmds.push(`${S}supersede ${F(id)} <why>`);
   return cmds;
 }

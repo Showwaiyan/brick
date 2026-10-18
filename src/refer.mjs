@@ -3,10 +3,10 @@
 import { PLUGIN_NAME } from './store.mjs';
 
 const S = `/${PLUGIN_NAME}:`;
-const NODE_ID = /^["'“‘]?([bp]\d+)(?![\w])/i;
-const NODE_ID_ANYWHERE = /(?:^|\s)([bp]\d+)(?=[\s.,;:!?)"'”’]|$)/i;
-const GAP_ID = /^["'“‘]?(g\d+)(?![\w])/i;
-const GAP_ID_ANYWHERE = /(?:^|\s)(g\d+)(?=[\s.,;:!?)"'”’]|$)/i;
+const NODE_ID = /^["'“‘]?([bp]\d+(?:\.\d+)*)(?![\w])/i;
+const NODE_ID_ANYWHERE = /(?:^|\s)([bp]\d+(?:\.\d+)*)(?=[\s.,;:!?)"'”’]|$)/i;
+const GAP_ID = /^["'“‘]?((?:[bp]\d+(?:\.\d+)*\.)?g\d+)(?![\w])/i;
+const GAP_ID_ANYWHERE = /(?:^|\s)((?:[bp]\d+(?:\.\d+)*\.)?g\d+)(?=[\s.,;:!?)"'”’]|$)/i;
 
 // What each verb needs. `reason` is how the missing piece is named; `ing` is the verb as used in "a reason for ...".
 const VERBS = {
@@ -106,7 +106,7 @@ export function parseRequest(data, verb, text) {
   let rest = cleanReason(found.rest);
   let by = null;
   if (v.by) {
-    const m = rest.match(/\b(?:replaced\s+by|by)\s+([bp]\d+)\b[\s,;:.]*/i);
+    const m = rest.match(/\b(?:replaced\s+by|by)\s+([bp]\d+(?:\.\d+)*)(?![\w.]*\w)[\s,;:.]*/i);
     if (m && data.nodes[m[1].toLowerCase()]) {
       by = m[1].toLowerCase();
       rest = cleanReason(`${rest.slice(0, m.index)} ${rest.slice(m.index + m[0].length)}`);
