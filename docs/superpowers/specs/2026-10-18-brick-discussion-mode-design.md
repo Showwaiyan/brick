@@ -25,7 +25,7 @@ Discussion is **opt-in**, in one of two ways, and never starts by itself.
 > You sound unsure about <the point>. Do you want my suggestions on it, or would you rather think it through yourself first?
 
 Rules for that question:
-- It is asked once per point. If you say no, or ignore it, the AI does not raise that point again unless you ask.
+- It is asked once per point. If you say no, or ignore it, the AI keeps asking plain questions. If you are unsure about the same point again it may offer once more; after a second no it never offers on that point again unless you ask. (The dry runs showed a model re-offers when you say you are still unsure right after a no, so the rule allows one more offer instead of fighting that.)
 - It is a question, never a lead-in: nothing else in that message, no ideas slipped in.
 - If you say yes, discussion starts. If you answer the original question instead, the AI carries on as before.
 

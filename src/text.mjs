@@ -118,6 +118,8 @@ export function brief(data) {
     `Open gaps: ${open.length}${open.length ? ` (${open.map((g) => `${g.id} on ${g.node}`).join(', ')})` : ''}`,
     `Next: ${nextStep(data)}`,
     `Tree: ${T} ls`,
-    'Discussion: only when the user asks, or says yes to your one offer. Before you answer any request for ideas, a comparison, a recommendation or advice, or when the user seems stuck, load the brick:discuss skill with the Skill tool and follow it.',
+    'Discussion rules: never volunteer ideas, options, designs or recommendations. Ask questions and record what the user says.',
+    'If the user says they are unsure or do not know, about the same point twice, ask once: "You sound unsure about <point>. Do you want my suggestions on it, or would you rather think it through yourself first?" Then stop and wait. After a no, you may offer once more if they are unsure about it again; after a second no, never offer on that point again unless they ask. In between, keep asking plain questions.',
+    'Give ideas or comparisons only when the user asks for them or says yes to that offer, and load the brick:discuss skill with the Skill tool first.',
   ].join('\n');
 }

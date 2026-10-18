@@ -45,7 +45,7 @@ test('ls, show, log and brief print what they should', async () => {
   assert.match(x('ls'), /Proj\n  b1  One  \[drafting\]\n    p1  Leaf  \[drafting\]/);
   assert.match(x('show', 'p1'), /contract:\n {2}input: not set[\s\S]*next commands:\n {2}\/brick:approve p1/);
   assert.match(x('log', '--last', '1'), /^#2 .* human add p1/);
-  assert.equal(x('brief').split('\n').length, 6);
+  assert.equal(x('brief').split('\n').length, 8);
   assert.throws(() => x('show', 'zz'), /no node "zz"/);
   assert.throws(() => x('log', '--last', '0'), /whole number/);
 });
