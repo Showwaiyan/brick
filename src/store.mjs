@@ -239,9 +239,19 @@ export function validate(data) {
     if (g.id !== key) errs.push(`gap key ${key} does not match its id ${g.id}`);
     if (!nodes[g.node]) errs.push(`${key}: node ${g.node} does not exist`);
     if (!GAP_STATUSES.includes(g.status)) errs.push(`${key}: bad status ${g.status}`);
+    if (g.seen !== undefined && g.seen !== null && !(data.seen || {})[g.seen]) errs.push(`${key}: note ${g.seen} does not exist`);
     if (key.includes('.')) {
       if (parentOf(key) !== g.node) errs.push(`${key}: id does not match its node`);
     } else if (!(data.counters.g >= Number(key.slice(1)))) errs.push(`${key}: counter is behind`);
+  }
+  for (const [key, n] of Object.entries(data.seen || {})) {
+    if (n.id !== key) errs.push(`note key ${key} does not match its id ${n.id}`);
+    if (n.node !== null && !nodes[n.node]) errs.push(`${key}: node ${n.node} does not exist`);
+    if (n.replaces !== null && n.replaces !== undefined && (n.replaces === key || !data.seen[n.replaces])) errs.push(`${key}: replaces ${n.replaces}, which is not another note`);
+    if (typeof n.path !== 'string' || !n.path || n.path.startsWith('/') || n.path.split('/').includes('..')) errs.push(`${key}: path must be a relative path inside the project`);
+    if (typeof n.note !== 'string' || !n.note || n.note.length > 300 || /[\r\n]/.test(n.note)) errs.push(`${key}: note must be one line of 1 to 300 characters`);
+    if (n.line !== null && n.line !== undefined && !(Number.isInteger(n.line) && n.line >= 1)) errs.push(`${key}: line must be a whole number of 1 or more`);
+    if (!((data.counters?.s ?? 0) >= Number(key.slice(1)))) errs.push(`${key}: counter is behind`);
   }
   (data.events || []).forEach((e, i) => {
     if (e.seq !== i + 1) errs.push(`event ${i + 1}: seq is ${e.seq}`);

@@ -34,3 +34,13 @@ test('with several boards and none active the brief asks which board and carries
   assert.match(out, /No board is active/);
   assert.match(out, /Using board <KEY>\./);
 });
+
+test('the brief tells the AI to read and record the code before it drafts', () => {
+  const out = brief(sample());
+  assert.match(out, /first read the code the work touches/);
+  assert.match(out, /record each file with board ai seen, then draft/);
+});
+
+test('the brief tells the AI to look up a node it does not remember', () => {
+  assert.match(brief(sample()), /look it up with board ls before saying you do not know it/);
+});

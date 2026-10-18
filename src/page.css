@@ -126,3 +126,15 @@ span.tag-gap { border-color: #E8B04B; color: #8A4B00; }
   .node-page { padding: 12px 16px 40px; }
   .top { padding: 16px; }
 }
+
+/* code seen */
+.seen-box { margin-top: 4px; }
+.seen-box summary { cursor: pointer; font-weight: 600; font-size: 14px; }
+.seen { margin: 8px 0; padding-left: 10px; border-left: 3px solid var(--border); display: grid; gap: 2px; }
+.seen-path { font-family: var(--mono); font-size: 13px; }
+.seen-gone { text-decoration: line-through; }
+.seen-state { font-size: 13px; padding: 0 6px; border-radius: 999px; border: 1px solid var(--border); }
+.seen-state-ok { color: #0B6B5D; }
+.seen-state-changed { color: #8A4B00; border-color: #E8B04B; background: #FFF1D6; }
+.seen-state-gone { color: #8A2D00; border-color: #D98C6B; background: #FBE3D8; }
+.seen-state-replaced { color: var(--muted); }

@@ -11,6 +11,7 @@ import { checkText } from './signals.mjs';
 import { initProject } from './init.mjs';
 import { renderFile, renderQuiet } from './render.mjs';
 import { openFile } from './open.mjs';
+import { addSeen, repoRoot, DRAFT_NUDGE } from './seen.mjs';
 
 const T = TOOL_NAME;
 const CONTRACT = ['input', 'output', 'check', 'limits'];
@@ -172,20 +173,25 @@ function quoteOf(values) {
 
 // AI commands: the only mutating commands the AI may run. No approve, reopen, supersede, restore, resolve or dismiss.
 const SAID = { 'user-said': { type: 'string' }, drafted: { type: 'boolean' } };
+// A drafted write on a board with no code notes gets one reminder line to read the repo.
+const nudged = (data, result, drafted) => (drafted && !Object.keys(data.seen || {}).length ? `${result}\n${DRAFT_NUDGE}` : result);
+
 const AI = {
   add(data, argv, now) {
     const { values, positionals } = parse(argv, { ...NODE_FLAGS, ...SAID, parent: { type: 'string' }, after: { type: 'string' } },
       'ai add box|problem --title "<t>" --user-said "<quote>" [--drafted] [--parent <id>] [--after <id>] [--desc ..] [--input ..] [--output ..] [--check ..] [--limits ..]', 1);
     if (!['box', 'problem'].includes(positionals[0])) throw new Error(`Say "box" or "problem", not "${positionals[0]}".`);
     const said = quoteOf(values);
-    return addNode(data, { kind: positionals[0], title: values.title, parent: values.parent, after: values.after,
+    const result = addNode(data, { kind: positionals[0], title: values.title, parent: values.parent, after: values.after,
       desc: values.desc, contract: contractOf(values), source: values.drafted ? 'ai-draft' : 'ai-scribe', said }, now);
+    return nudged(data, result, values.drafted);
   },
   edit(data, argv, now) {
     const { values, positionals } = parse(argv, { ...NODE_FLAGS, ...SAID },
       'ai edit <id> --user-said "<quote>" [--drafted] [--title ..] [--desc ..] [--input ..] [--output ..] [--check ..] [--limits ..]', 1);
     const said = quoteOf(values);
-    return editNode(data, positionals[0], { title: values.title, desc: values.desc, contract: contractOf(values), said, drafted: values.drafted }, 'ai', now);
+    const result = editNode(data, positionals[0], { title: values.title, desc: values.desc, contract: contractOf(values), said, drafted: values.drafted }, 'ai', now);
+    return nudged(data, result, values.drafted);
   },
   project(data, argv, now) {
     const { values } = parse(argv, { 'user-said': SAID['user-said'], input: { type: 'string' }, output: { type: 'string' }, title: { type: 'string' } },
@@ -194,9 +200,14 @@ const AI = {
     return setProject(data, values, 'ai', now, onlyTitle ? null : quoteOf(values));
   },
   gap(data, argv, now) {
-    const { values, positionals } = parse(argv, { missing: { type: 'string' }, where: { type: 'string' }, kind: { type: 'string' } },
-      'ai gap <nodeId> --missing "<what is missing>" [--kind edge-case|architecture|assumption|order|other] [--where "<location>"]', 1);
-    return `raised ${raiseGapChecked(data, positionals[0], values.missing, values.where, now, values.kind)} on ${positionals[0]}`;
+    const { values, positionals } = parse(argv, { missing: { type: 'string' }, where: { type: 'string' }, kind: { type: 'string' }, seen: { type: 'string' } },
+      'ai gap <nodeId> --missing "<what is missing>" [--kind edge-case|architecture|assumption|order|other] [--where "<location>"] [--seen <noteId>]', 1);
+    return `raised ${raiseGapChecked(data, positionals[0], values.missing, values.where, now, values.kind, values.seen)} on ${positionals[0]}`;
+  },
+  seen(data, argv, now, ctx) {
+    const { values } = parse(argv, { path: { type: 'string' }, note: { type: 'string' }, node: { type: 'string' }, line: { type: 'string' }, replaces: { type: 'string' } },
+      'ai seen --path <file or folder> --note "<what is there>" [--node <id>] [--line N] [--replaces <noteId>]', 0);
+    return addSeen(data, ctx.root, values, now);
   },
 };
 
@@ -209,15 +220,15 @@ const READING = {
     if (openFile(file)) return values.quiet ? '' : `opened ${file}`;
     return values.quiet ? '' : `Could not open a browser. The page is here: ${file}`;
   },
-  ls: (data) => ls(data),
-  show: (data, argv) => show(data, parse(argv, {}, 'show <id>', 1).positionals[0]),
-  check(data, argv) {
+  ls: (data, argv, dir) => ls(data, repoRoot(dir)),
+  show: (data, argv, dir) => show(data, parse(argv, {}, 'show <id>', 1).positionals[0], repoRoot(dir)),
+  check(data, argv, dir) {
     const { positionals } = parseArgs({ args: argv, allowPositionals: true, strict: true });
     if (positionals.length > 1) throw new Error(`Usage: ${T} check [id]`);
-    return checkText(data, positionals[0]);
+    return checkText(data, positionals[0], repoRoot(dir));
   },
   log: (data, argv) => log(data, Number(parse(argv, { last: { type: 'string' } }, 'log [--last N]', 0).values.last || 20)),
-  brief: (data) => brief(data),
+  brief: (data, argv, dir) => brief(data, { root: repoRoot(dir) }),
 };
 
 // Looks up an `ai` subcommand, or explains what the AI may run.
@@ -232,7 +243,7 @@ export function execute(dir, argv, now = new Date().toISOString()) {
   const handler = cmd === 'ai' ? aiHandler(rest[0]) : MUTATING[cmd];
   if (handler) {
     const args = cmd === 'ai' ? rest.slice(1) : rest;
-    const result = mutate(dir, (data) => handler(data, args, now)); // save first,
+    const result = mutate(dir, (data) => handler(data, args, now, { root: repoRoot(dir) })); // save first,
     renderQuiet(dir); // render second: a render failure only warns
     return result;
   }

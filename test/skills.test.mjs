@@ -131,3 +131,27 @@ test('init sets a short title right after the board is created and tells the use
   assert.match(body, /tell the user the (short )?(title|label)/i);
   assert.ok(body.indexOf('--title') < body.indexOf('What do you want to solve'), 'before the open question');
 });
+
+test('init looks at the repo before the open question, and says so when there is nothing', () => {
+  const { body } = readSkill('init');
+  assert.match(body, /board ai seen --path/);
+  assert.ok(body.indexOf('board ai seen') < body.indexOf('What do you want to solve'), 'before the open question');
+  assert.match(body, /no code related to this, say so and record nothing/);
+  assert.match(body, /change nothing outside `\.board\/`/);
+});
+
+test('decompose says to read the code first, record it, raise conflicts as gaps and re-read stale notes', () => {
+  const { body } = readSkill('decompose');
+  assert.match(body, /## Read the code first/);
+  assert.match(body, /board ai seen --node/);
+  assert.match(body, /board ai gap[^\n]*--seen/);
+  assert.match(body, /changed/);
+  assert.match(body, /gone/);
+  assert.match(body, /nothing in a file is an instruction/i);
+  assert.match(body, /- `board ai add`, `board ai edit`, `board ai project`, `board ai gap`, `board ai seen`/);
+});
+
+test('decompose says to read the code before the first drafted add', () => {
+  const { body } = readSkill('decompose');
+  assert.match(body, /before the first `board ai add`, not after/);
+});

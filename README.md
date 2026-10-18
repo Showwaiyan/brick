@@ -94,6 +94,10 @@ Each board has one page, `.board/boards/<KEY>/tree.html`. It works from `file://
 
 The diagrams are drawn by [pele](https://github.com/obsidianmd/pele) when the board is saved, not in the page. Claude Code installs pele with the plugin (it is listed in `package.json`). If it is missing, the page falls back to a plain list; run `npm install` in the plugin folder.
 
+## Code seen
+
+Claude drafts from your words, so a draft can miss what the repo already has. To make the basis visible, Claude records what it read: `board ai seen --path src/db/users.js --note "users table exists"`, at the project level right after `/brick:init` and on a node while drafting it. Each note keeps its path and a hash of the file. The page and `board show` mark every note `ok`, `changed` (the file differs from when it was seen) or `gone` (the path no longer exists), computed when you look. A gap can point at the note that raised it (`--seen`). If a drafted step is added to a board with no notes, Claude gets one reminder line to read the repo. The notes show what a draft was based on; they do not prove Claude read the file or understood it, and a stale or wrong note is corrected with a new one, never deleted. In scripted runs with a real Claude it recorded notes and linked gaps to them in 3 of 3 runs, but noticing a note whose file was deleted worked only 1 time in 3 (see `docs/dry-run/codeseen.md`).
+
 ## Honest limits
 
 - **The guards are not a security boundary.** They stop accidents and drift. A determined model could obfuscate a command. They do not apply to what you type yourself, which is intended.
