@@ -18,7 +18,7 @@ const CALL = new RegExp(`(^|[\\s;&|(\`$"'])(?:\\S*/)?${T}(?:\\.mjs)?\\s+([A-Za-z
 const READ_ONLY = ['ls', 'show', 'log', 'brief', 'render', 'open', 'check', 'help', 'boards', 'use'];
 // Subcommands of ours. A word that is not one of these ("board is", "board layout") is ordinary text.
 const KNOWN = ['approve', 'reopen', 'supersede', 'restore', 'init', 'add', 'edit', 'project', 'gap', 'ai'];
-const AI_ALLOWED = ['add', 'edit', 'gap', 'project'];
+const AI_ALLOWED = ['add', 'edit', 'gap', 'project', 'seen'];
 
 // True when one `board ...` call is something the AI may run (or is not a board call at all).
 function allowedCall(first, second) {
@@ -40,8 +40,8 @@ function blockMessage(first, second) {
   if (['add', 'edit', 'project'].includes(first)) {
     return `Do not run ${T} ${first} yourself. Record what the user said with: ${T} ai ${first} ... --user-said "<their words>"`;
   }
-  if (first === 'ai') return `The AI may only run: ${T} ai add|edit|project|gap. Approving and deciding are the user's job.`;
-  return `"${T} ${first}" is not a command the AI may run. The AI may run ${T} ai add|edit|project|gap and the read-only commands.`;
+  if (first === 'ai') return `The AI may only run: ${T} ai add|edit|project|gap|seen. Approving and deciding are the user's job.`;
+  return `"${T} ${first}" is not a command the AI may run. The AI may run ${T} ai add|edit|project|gap|seen and the read-only commands.`;
 }
 
 // Decides on a Bash command. Returns null to allow, or the message that blocks it.

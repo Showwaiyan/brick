@@ -20,7 +20,7 @@ const write = (file_path, tool_name = 'Write', cwd = BOARD) => guard('write', { 
 test('guard bash: allowed commands', () => {
   for (const c of ['board ls', 'board ai gap b3 --missing "x"', 'cd x && board show b1', 'node /p/bin/board.mjs brief',
     'ls -la', 'git status', 'board ai add box --title x --user-said y', 'board ai edit b1 --user-said y --desc z',
-    'board ai project --user-said y --input a', 'board log --last 5', 'echo "the dashboard is fine"']) {
+    'board ai project --user-said y --input a', 'board ai seen --path a.js --note x', 'board ai project --title Short', 'board log --last 5', 'echo "the dashboard is fine"']) {
     const r = bash(c);
     assert.equal(r.status, 0, `${c}: ${r.stderr}`);
   }
