@@ -138,3 +138,38 @@ test('the stylesheet styles tags and never reaches into a node with a descendant
     assert.ok(css.includes(`.${name}`), name);
   }
 });
+
+test('page data carries the code seen lists with states, and each gap its note', async () => {
+  const { newProject } = await import('./helpers.mjs');
+  const { cwd, dir } = await newProject('Login');
+  fs.writeFileSync(path.join(cwd, 'a.js'), 'x\n');
+  fs.writeFileSync(path.join(cwd, 'b.js'), 'y\n');
+  execute(dir, ['ai', 'add', 'box', '--title', 'Check', '--user-said', 'it checks the password']);
+  execute(dir, ['ai', 'seen', '--path', 'a.js', '--note', 'project level']);
+  execute(dir, ['ai', 'seen', '--path', 'b.js', '--note', 'on the box', '--node', 'b1', '--line', '2']);
+  execute(dir, ['ai', 'gap', 'b1', '--missing', 'Nothing says whether this reuses b.js.', '--seen', 's2']);
+  fs.appendFileSync(path.join(cwd, 'b.js'), 'z\n');
+  fs.rmSync(path.join(cwd, 'a.js'));
+  const pd = pageData(load(dir), 'now', { root: cwd });
+  assert.deepEqual(pd.project.seen.map((n) => [n.id, n.path, n.state]), [['s1', 'a.js', 'gone']]);
+  assert.deepEqual(pd.nodes.b1.seen.map((n) => [n.id, n.line, n.state, n.replaced_by]), [['s2', 2, 'changed', null]]);
+  assert.deepEqual(pd.nodes.b1.gaps[0].seen, { id: 's2', path: 'b.js' });
+  const bare = pageData(load(dir), 'now');
+  assert.deepEqual(bare.project.seen, []);
+  assert.deepEqual(bare.nodes.b1.seen, []);
+});
+
+test('note text with markup stays inside the escaped data and the page makes no requests', async () => {
+  const { newProject } = await import('./helpers.mjs');
+  const { cwd, dir } = await newProject('Login');
+  fs.writeFileSync(path.join(cwd, 'a.js'), 'x\n');
+  execute(dir, ['ai', 'seen', '--path', 'a.js', '--note', '</script><script>alert(1)</script> & "q"']);
+  execute(dir, ['render']);
+  const html = fs.readFileSync(path.join(dir, 'tree.html'), 'utf8');
+  assert.equal(html.split('</script').length - 1, 2, 'only our own two closing tags');
+  assert.ok(!html.includes('<script>alert(1)'));
+  const { data, code } = scripts(html);
+  assert.equal(JSON.parse(data).project.seen[0].note, '</script><script>alert(1)</script> & "q"');
+  assert.ok(!/https?:\/\//.test(html.replace(/xmlns="[^"]*"/g, '')), 'no URLs to load');
+  assert.ok(!/fetch\(|XMLHttpRequest|\.src\s*=/.test(code));
+});
