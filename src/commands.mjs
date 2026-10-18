@@ -4,6 +4,7 @@ import { findProject, load, mutate, nextId, addEvent, TOOL_NAME, DATA_DIR, PLUGI
 import { children } from './model.mjs';
 import { approve, reopen, supersede, restore, closeGap, needNode, nextOrder, blank, raiseGapChecked, lintSaid } from './rules.mjs';
 import { ls, show, log, brief, HELP } from './text.mjs';
+import { checkText } from './signals.mjs';
 import { initProject } from './init.mjs';
 import { renderFile, renderQuiet } from './render.mjs';
 import { openFile } from './open.mjs';
@@ -195,6 +196,11 @@ const READING = {
   },
   ls: (data) => ls(data),
   show: (data, argv) => show(data, parse(argv, {}, 'show <id>', 1).positionals[0]),
+  check(data, argv) {
+    const { positionals } = parseArgs({ args: argv, allowPositionals: true, strict: true });
+    if (positionals.length > 1) throw new Error(`Usage: ${T} check [id]`);
+    return checkText(data, positionals[0]);
+  },
   log: (data, argv) => log(data, Number(parse(argv, { last: { type: 'string' } }, 'log [--last N]', 0).values.last || 20)),
   brief: (data) => brief(data),
 };

@@ -28,6 +28,7 @@ AI commands (the only writes the AI may run; each needs the user's own words):
 
 Read-only (human or AI):
   ${T} ls | ${T} show <id> | ${T} log [--last N] | ${T} brief | ${T} help
+  ${T} check [id]          signals about size and shape (facts and flags, not a verdict)
   ${T} render              rebuild .board/tree.html
   ${T} open [--quiet]      rebuild it and open it in your browser
 `;

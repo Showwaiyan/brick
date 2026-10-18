@@ -13,7 +13,7 @@ const T = TOOL_NAME;
 // Finds `board <word> [<word>]` anywhere in a command line (after a space, ; & | ( ` $ " or ').
 // The tool name is built from TOOL_NAME so a rename keeps the guard in step.
 const CALL = new RegExp(`(^|[\\s;&|(\`$"'])(?:\\S*/)?${T}(?:\\.mjs)?\\s+([A-Za-z-]+)(?:\\s+([A-Za-z-]+))?`, 'g');
-const READ_ONLY = ['ls', 'show', 'log', 'brief', 'render', 'open', 'help'];
+const READ_ONLY = ['ls', 'show', 'log', 'brief', 'render', 'open', 'check', 'help'];
 // Subcommands of ours. A word that is not one of these ("board is", "board layout") is ordinary text.
 const KNOWN = ['approve', 'reopen', 'supersede', 'restore', 'init', 'add', 'edit', 'project', 'gap', 'ai'];
 const AI_ALLOWED = ['add', 'edit', 'gap', 'project'];
