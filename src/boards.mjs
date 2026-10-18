@@ -3,8 +3,8 @@ import { listBoards, activeKey, load, PLUGIN_NAME } from './store.mjs';
 import { displayState, openGaps } from './model.mjs';
 import { shownTitle } from './title.mjs';
 
-const FULL_ID = /^([A-Za-z][A-Za-z0-9]{1,5})-([bp]\d+(?:\.\d+)*(?:\.g\d+)?|[gs]\d+)$/i;
-const KEYED_IN_TEXT = /(?<![\w-])([A-Za-z][A-Za-z0-9]{1,5})-(?=[bpgs]\d)/g;
+const FULL_ID = /^([A-Za-z][A-Za-z0-9]{1,5})-([bp]\d+(?:\.\d+)*(?:\.g\d+)?|g\d+)$/i;
+const KEYED_IN_TEXT = /(?<![\w-])([A-Za-z][A-Za-z0-9]{1,5})-(?=[bpg]\d)/g;
 const HOW_TO_NAME = (first) => `Name one: add --board <KEY> to the command, use a full id like ${first}-b1, or run: board use <KEY>`;
 
 // One line of facts about a board: its key, name and counts. Never throws.

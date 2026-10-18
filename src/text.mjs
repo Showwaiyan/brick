@@ -3,7 +3,6 @@ import { children, displayState, openGaps, nextCommands } from './model.mjs';
 import { approveCheck } from './rules.mjs';
 import { TOOL_NAME, PLUGIN_NAME } from './store.mjs';
 import { fid } from './ids.mjs';
-import { seenList, seenSummary } from './seen.mjs';
 
 const T = TOOL_NAME;
 const LABEL = { approved: 'approved', drafting: 'drafting', has_gaps: 'has gaps', superseded: 'superseded' };
@@ -28,9 +27,7 @@ AI commands (the only writes the AI may run; each needs the user's own words):
       (--drafted: only when the user asked you to write it for them; the quote is their request)
   ${T} ai project [--title "<short title>"] [--user-said "<quote>" --input .. --output ..]
       (--title: a label of 1 to 40 characters for the board; it needs no quote)
-  ${T} ai gap <nodeId> --missing "<what is missing>" [--kind edge-case|architecture|assumption|order|other] [--where "<location>"] [--seen <noteId>]
-  ${T} ai seen --path <file or folder> --note "<what is there>" [--node <id>] [--line N] [--replaces <noteId>]
-      (records what you read in the repo; needs no quote; the path must exist inside the project)
+  ${T} ai gap <nodeId> --missing "<what is missing>" [--kind edge-case|architecture|assumption|order|other] [--where "<location>"]
 
 Several boards: ids carry the board key (LOGIN-p3.1). Add --board KEY after any command, or use a full id.
 Read-only (human or AI):
@@ -41,22 +38,6 @@ Read-only (human or AI):
   ${T} render              rebuild .board/tree.html
   ${T} open [--quiet]      rebuild it and open it in your browser
 `;
-
-// Code seen: one line per note, and the "N notes (G gone, C changed)" summary.
-const noteState = (data, n) => (n.replaced_by ? `replaced by ${fid(data, n.replaced_by)}` : n.state);
-const noteLine = (data, n, indent) => `${indent}${fid(data, n.id)}  ${n.path}${n.line ? `:${n.line}` : ''}  ${n.note}  [${noteState(data, n)}]`;
-export function seenSummaryText(data, root) {
-  const s = seenSummary(data, root);
-  return `${s.total} note${s.total === 1 ? '' : 's'} (${s.gone} gone, ${s.changed} changed)`;
-}
-// When a note's file is gone or changed, the brief says what to do about it.
-const staleRule = (data, root) => {
-  const s = seenSummary(data, root);
-  return s.gone || s.changed
-    ? ['Some code notes are out of date (marked gone or changed in board ls). Say so to the user, read those files again before you rely on them, and record a new note with board ai seen --replaces <note id>.']
-    : [];
-};
-const hasNotes = (data) => Object.keys(data.seen || {}).length > 0;
 
 // Depth-first list of [node, depth], children in order (superseded stay in place).
 function walk(data, parent = null, depth = 0) {
@@ -69,12 +50,11 @@ function postOrder(data, parent = null) {
 }
 
 // The whole tree as indented text.
-export function ls(data, root = null) {
+export function ls(data) {
   const p = data.project;
   const io = p.input || p.output ? `  (${p.input || '-'} -> ${p.output || '-'})` : '';
   const F = (id) => fid(data, id);
   const lines = [`${p.name}${p.key ? ` [${p.key}]` : ''}${io}`];
-  if (hasNotes(data)) lines.push(`  code seen: ${seenSummaryText(data, root)}`, ...seenList(data, root, null).map((n) => noteLine(data, n, '    ')));
   for (const [n, depth] of walk(data)) {
     const state = displayState(data, n.id);
     const gaps = openGaps(data, n.id).length;
@@ -98,7 +78,7 @@ function eventLine(e, key = null) {
 }
 
 // One node in full.
-export function show(data, id, root = null) {
+export function show(data, id) {
   const n = data.nodes[id];
   if (!n) throw new Error(`There is no node "${id}". Run: ${T} ls`);
   const F = (x) => fid(data, x);
@@ -109,10 +89,8 @@ export function show(data, id, root = null) {
   const gaps = Object.values(data.gaps).filter((g) => g.node === id);
   if (gaps.length) {
     out.push('gaps:');
-    for (const g of gaps) out.push(`  ${F(g.id)} [${g.status}] ${g.kind ? `(${g.kind}) ` : ''}${g.missing}${g.where ? ` (${g.where})` : ''}${g.note ? ` - ${g.note}` : ''}${g.seen && data.seen?.[g.seen] ? `  because: ${data.seen[g.seen].path}` : ''}`);
+    for (const g of gaps) out.push(`  ${F(g.id)} [${g.status}] ${g.kind ? `(${g.kind}) ` : ''}${g.missing}${g.where ? ` (${g.where})` : ''}${g.note ? ` - ${g.note}` : ''}`);
   }
-  const notes = seenList(data, root, id);
-  out.push(notes.length ? 'code seen:' : 'code seen: none', ...notes.map((x) => noteLine(data, x, '  ')));
   if (n.superseded) {
     const s = n.superseded;
     out.push(`superseded: ${s.reason}${s.by ? `  (replaced by ${F(s.by)})` : ''}${s.cascade_from ? `  (with ${F(s.cascade_from)})` : ''}`);
@@ -167,13 +145,12 @@ export function brief(data, ctx = null) {
     ...(many ? [boardsLine(ctx), BOARD_RULES] : []),
     `Nodes: ${count.approved} approved, ${count.drafting} drafting, ${count.has_gaps} with gaps, ${count.superseded} superseded`,
     `Open gaps: ${open.length}${open.length ? ` (${open.map((g) => `${fid(data, g.id)} on ${fid(data, g.node)}`).join(', ')})` : ''}`,
-    ...(ctx?.root && hasNotes(data) ? [`Code seen: ${seenSummaryText(data, ctx.root)}`, ...staleRule(data, ctx.root)] : []),
     `Next: ${nextStep(data)}`,
     `Tree: ${T} ls`,
     'Discussion rules: never volunteer ideas, options, designs or recommendations. When the user states a flow step, a sub-problem or a contract, record it at once in their words (board ai add, edit or project with --user-said, after loading the brick:decompose skill), say the id, then ask one question. Run board ls first, and edit a node that already exists instead of adding a duplicate. When the user names a step or node you do not remember, look it up with board ls before saying you do not know it.',
     'If the user says they are unsure or do not know, about the same point twice, ask once: "You sound unsure about <point>. Do you want my suggestions on it, or would you rather think it through yourself first?" Then stop and wait. After a no, you may offer once more if they are unsure about it again; after a second no, never offer on that point again unless they ask. In between, keep asking plain questions.',
     'Give ideas or comparisons only when the user asks for them or says yes to that offer, and load the brick:discuss skill with the Skill tool first.',
-    'When the user asks you to break something down for them or to draft the flow ("break it down for me", "draft the flow"), first read the code the work touches (the related modules, routes, models and tests) and record each file with board ai seen, then draft it with board ai add --drafted, one level, and do not ask them questions or for their own breakdown first: draft from the title, what is on the board and what the code already has, and say what you based it on and what you assumed afterwards. Draft only on such a request. When asked for gaps, sweep for gaps, edge cases and architecture issues (see the decompose skill).',
+    'When the user asks you to break something down for them or to draft the flow ("break it down for me", "draft the flow"), first read the code the work touches (the related modules, routes, models and tests), then draft it with board ai add --drafted, one level, and do not ask them questions or for their own breakdown first: draft from the title, what is on the board and what the code already has, and say which files you based it on and what you assumed afterwards. Draft only on such a request. When asked for gaps, sweep for gaps, edge cases and architecture issues (see the decompose skill).',
     'When the user has finished describing a node, or asks whether to split further, run `board check <id>`, load the brick:sizing skill, and state what the checks show as an observation.',
   ].join('\n');
 }

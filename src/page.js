@@ -68,11 +68,6 @@ function renderHeader() {
   });
   h.append(tabs);
   h.append(el('p', 'muted', 'Read-only. Decide with the /brick commands in Claude Code.'));
-  if (DATA.project.seen && DATA.project.seen.length) {
-    var d = el('details', 'seen-box');
-    d.append(el('summary', null, 'Code seen (' + DATA.project.seen.length + ')'), seenRows(DATA.project.seen));
-    h.append(d);
-  }
   return h;
 }
 
@@ -126,28 +121,6 @@ function renderBoard() {
   return wrap;
 }
 
-// ---------- code seen ----------
-
-// The words for a note's state. A word always carries the meaning, not only a colour.
-function seenStateText(n) {
-  if (n.replaced_by) return 'replaced by ' + showId(DATA.project.key, n.replaced_by);
-  return n.state === 'changed' ? 'changed since seen' : n.state;
-}
-
-// One note per row: path, state, the note and when it was recorded.
-function seenRows(list) {
-  var box = el('div', 'seen-list');
-  list.forEach(function (n) {
-    var row = el('div', 'seen');
-    var head = el('p', null);
-    head.append(el('code', 'seen-path' + (n.state === 'gone' ? ' seen-gone' : ''), n.path + (n.line ? ':' + n.line : '')),
-      document.createTextNode(' '), el('span', 'seen-state seen-state-' + (n.replaced_by ? 'replaced' : n.state), seenStateText(n)));
-    row.append(head, el('p', null, n.note), el('p', 'muted', showId(DATA.project.key, n.id) + ' \u00b7 ' + when(n.at)));
-    box.append(row);
-  });
-  return box;
-}
-
 // ---------- node page ----------
 
 function section(title) {
@@ -198,11 +171,6 @@ function renderNodePage(id) {
   }
   page.append(who);
 
-  if (n.seen && n.seen.length) {
-    var seen = section('Code seen');
-    seen.append(seenRows(n.seen));
-    page.append(seen);
-  }
 
   var d = section('Description');
   d.append(el('p', n.description ? null : 'muted', n.description || 'not set'));
@@ -222,7 +190,6 @@ function renderNodePage(id) {
   n.gaps.forEach(function (gap) {
     var box = el('div', 'gap' + (gap.status === 'open' ? '' : ' closed'));
     box.append(el('p', null, showId(DATA.project.key, gap.id) + ' [' + gap.status + '] ' + (gap.kind ? '(' + gap.kind + ') ' : '') + gap.missing + (gap.where ? ' (' + gap.where + ')' : '')));
-    if (gap.seen) box.append(el('p', 'muted', 'because: ' + gap.seen.path));
     if (gap.note) box.append(el('p', 'muted', 'Note: ' + gap.note));
     g.append(box);
   });

@@ -106,35 +106,3 @@ test('validate checks nested ids against their parent and node', () => {
   validate(d);
   validate(sample());
 });
-
-// A note on p1 of the sample tree.
-const note = (over = {}) => ({ id: 's1', node: 'p1', path: 'src/a.js', line: null, note: 'does a thing', hash: null, at: 'x', replaces: null, ...over });
-const withNotes = (notes, counter = Object.keys(notes).length) => {
-  const d = sample();
-  d.seen = notes;
-  d.counters.s = counter;
-  return d;
-};
-
-test('validate: a seen map is accepted, and a file without one still is', () => {
-  validate(sample());
-  validate(withNotes({ s1: note(), s2: note({ id: 's2', node: null, replaces: 's1', line: 12, hash: 'ab'.repeat(20) }) }));
-});
-
-test('validate: a bad note is rejected, with its id in the message', () => {
-  const bad = {
-    'key differs from id': { s1: note({ id: 's9' }) },
-    'unknown node': { s1: note({ node: 'p9' }) },
-    'replaces unknown': { s1: note({ replaces: 's7' }) },
-    'replaces itself': { s1: note({ replaces: 's1' }) },
-    'dot dot path': { s1: note({ path: '../x' }) },
-    'absolute path': { s1: note({ path: '/etc/hosts' }) },
-    'empty path': { s1: note({ path: '' }) },
-    'empty note': { s1: note({ note: '' }) },
-    'two lines': { s1: note({ note: 'a\nb' }) },
-    'too long': { s1: note({ note: 'x'.repeat(301) }) },
-    'line zero': { s1: note({ line: 0 }) },
-  };
-  for (const [what, notes] of Object.entries(bad)) assert.throws(() => validate(withNotes(notes)), /s\d/, what);
-  assert.throws(() => validate(withNotes({ s3: note({ id: 's3' }) }, 1)), /counter/);
-});
