@@ -167,3 +167,12 @@ test('with several boards the AI must name the board on every ai command', () =>
   run(one, 'init', 'Login');
   assert.equal(run(one, 'ai', 'add', 'box', '--title', 'X', '--user-said', 'a step').status, 0, 'one board: no flag needed');
 });
+
+test('a full note id names its board like any other full id', async () => {
+  const { resolveBoard } = await import('../src/boards.mjs');
+  const cwd = two();
+  const r = resolveBoard(path.join(cwd, '.board'), ['show', 'LOGIN-s1']);
+  assert.equal(r.key, 'LOGIN');
+  assert.deepEqual(r.argv, ['show', 's1']);
+  assert.equal(r.explicit, true);
+});

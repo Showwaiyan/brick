@@ -1,5 +1,5 @@
 // Ids and board keys. Pure functions, no imports.
-// A stored id is short: b1, p3, p3.1, p3.1.2, or a gap p3.1.g2 (legacy gaps are flat: g2).
+// A stored id is short: b1, p3, p3.1, p3.1.2, a gap p3.1.g2 (legacy gaps are flat: g2), or a code note s4.
 // The full id adds the board key in front: LOGIN-p3.1.2.
 
 export const KEY_RE = /^[A-Z][A-Z0-9]{1,5}$/;
@@ -7,7 +7,7 @@ export const KEY_RE = /^[A-Z][A-Z0-9]{1,5}$/;
 const STOP = new Set(['the', 'and', 'for', 'want', 'build', 'make', 'create', 'new', 'add', 'how', 'what', 'with', 'our', 'my', 'to']);
 const FALLBACK_KEY = 'BOARD';
 const MAX_KEY = 6;
-const ID = /^(?:([A-Za-z][A-Za-z0-9]{1,5})-)?([bp]\d+(?:\.\d+)*(?:\.g\d+)?|g\d+)$/i;
+const ID = /^(?:([A-Za-z][A-Za-z0-9]{1,5})-)?([bp]\d+(?:\.\d+)*(?:\.g\d+)?|g\d+|s\d+)$/i;
 
 // A key from the board's name, avoiding the keys in `taken`.
 export function deriveKey(name, taken = []) {
@@ -65,5 +65,5 @@ export function compareIds(a, b) {
 // Adds the key to every bare id in a result line (the lines our own code writes; never user text).
 export function decorateIds(text, key) {
   if (!key) return text;
-  return String(text).replace(/(?<![\w.-])([bp]\d+(?:\.\d+)*(?:\.g\d+)?|g\d+)(?![\w-])/g, `${key}-$1`);
+  return String(text).replace(/(?<![\w.-])([bp]\d+(?:\.\d+)*(?:\.g\d+)?|g\d+|s\d+)(?![\w-])/g, `${key}-$1`);
 }
