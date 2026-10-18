@@ -165,3 +165,9 @@ function makeCanvas(svgText, opts) {
   requestAnimationFrame(layout);
   return wrap;
 }
+
+// A box clicked in a diagram carries the Mermaid id (p1_1); map it back to the node id (p1.1).
+function diagramNodeId(nodes, id) { return nodes[id] ? id : String(id).replace(/_/g, '.'); }
+
+// An id with the board key in front, as shown to the person.
+function showId(key, id) { return key ? key + '-' + id : id; }

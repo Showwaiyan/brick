@@ -73,3 +73,12 @@ test('clamp: the diagram cannot be dragged out of sight', () => {
   assert.ok(far.x < nat.w, 'still overlaps across');
   assert.ok(far.y + far.h > 0, 'still overlaps down');
 });
+
+test('diagramNodeId maps a Mermaid id back to the node id, and showId adds the key', () => {
+  const { diagramNodeId, showId } = ctx;
+  const nodes = { 'p1.1': {}, p2: {}, b1: {} };
+  assert.equal(diagramNodeId(nodes, 'p1_1'), 'p1.1');
+  assert.equal(diagramNodeId(nodes, 'p2'), 'p2');
+  assert.equal(showId('LOGIN', 'p1.1'), 'LOGIN-p1.1');
+  assert.equal(showId(null, 'p1.1'), 'p1.1');
+});

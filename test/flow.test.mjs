@@ -115,3 +115,14 @@ test('drawSvg: bad input gives null instead of throwing', () => {
   assert.equal(drawSvg('this is not a diagram at all'), null);
   assert.equal(drawSvg('flowchart LR\n' + 'a --> b\n'.repeat(200000)), null);
 });
+
+test('nested ids: Mermaid ids have no dots, and labels show the board key', () => {
+  const data = pd({ b1: { title: 'One' }, p1: { parent: 'b1' }, 'p1.1': { parent: 'p1', title: 'Deep' } }, ['b1']);
+  data.project = { input: null, output: null, key: 'LOGIN', name: 'Login' };
+  const tree = treeMermaid(data);
+  assert.match(tree, /p1_1\["Deep<br\/>Drafting · LOGIN-p1\.1"\]:::drafting/);
+  assert.match(tree, /p1 --> p1_1/);
+  assert.ok(!/p1\.1\[|--> p1\.1/.test(tree));
+  assert.match(nodeMermaid(data, 'p1'), /p1_1\[/);
+  assert.ok(drawSvg(tree).includes('p1_1'), 'pele draws it');
+});

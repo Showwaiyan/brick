@@ -105,3 +105,17 @@ test('without pele installed the page still renders, with a plain list instead o
   assert.match(html, /"tree_svg":null/);
   assert.match(fs.readFileSync(path.resolve('src/page.js'), 'utf8'), /could not be drawn/);
 });
+
+test('a board page carries its key and a link back to the overview; the key shows on ids', () => {
+  const cwd = tmp();
+  const run = (...a) => spawnSync('node', [path.resolve('bin/board.mjs'), ...a], { cwd, encoding: 'utf8' });
+  run('init', 'Login');
+  run('add', 'box', 'One');
+  run('add', 'problem', 'Two', '--parent', 'b1');
+  run('add', 'problem', 'Three', '--parent', 'p1');
+  const html = fs.readFileSync(path.join(cwd, '.board/boards/LOGIN/tree.html'), 'utf8');
+  assert.match(html, /"key":"LOGIN"/);
+  assert.match(html, /"overview":"..\/..\/index\.html"/);
+  assert.match(html, /LOGIN-p1\.1/);
+  assert.match(html, /All boards/);
+});

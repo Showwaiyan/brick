@@ -45,8 +45,13 @@ function go(change) {
 function renderHeader() {
   var h = el('header', 'top');
   var c = DATA.counts;
+  if (DATA.overview) {
+    var all = el('a', 'link', '\u2190 All boards');
+    all.href = DATA.overview;
+    h.append(all);
+  }
   h.append(el('h1', null, DATA.project.name));
-  h.append(el('p', 'meta', 'Last updated ' + when(DATA.generated_at)));
+  h.append(el('p', 'meta', (DATA.project.key ? 'Board ' + DATA.project.key + ' \u00b7 ' : '') + 'Last updated ' + when(DATA.generated_at)));
   h.append(el('p', 'counts', c.approved + ' approved · ' + plural(c.open_gaps, 'open gap') + ' · ' + c.drafting + ' drafting' +
     (c.superseded ? ' · ' + c.superseded + ' superseded' : '')));
   var tabs = el('div', 'tabs');
@@ -72,7 +77,7 @@ function renderNodeCard(id) {
   b.type = 'button';
   b.dataset.key = 'card:' + id;
   b.append(el('span', 'card-title', n.title));
-  b.append(el('span', 'card-state', STATE_LABEL[n.state] + ' \u00b7 ' + id));
+  b.append(el('span', 'card-state', STATE_LABEL[n.state] + ' \u00b7 ' + showId(DATA.project.key, id)));
   if (n.active_children) b.append(el('span', 'card-sub', plural(n.active_children, 'sub-problem')));
   if (n.open_gaps) b.append(el('span', 'card-sub', plural(n.open_gaps, 'open gap')));
   b.addEventListener('click', function () { go({ node: id }); });
@@ -96,7 +101,7 @@ function treeList(ids) {
 function renderBoard() {
   var svg = S.view === 'tree' ? DATA.tree_svg : DATA.board_svg;
   var wrap = el('div', 'board');
-  var canvas = svg ? makeCanvas(svg, { height: 'calc(100vh - 190px)', wheelZoom: true, label: S.view === 'tree' ? 'Tree' : 'Flow', onPick: function (id) { go({ node: id }); } }) : null;
+  var canvas = svg ? makeCanvas(svg, { height: 'calc(100vh - 190px)', wheelZoom: true, label: S.view === 'tree' ? 'Tree' : 'Flow', onPick: function (id) { go({ node: diagramNodeId(DATA.nodes, id) }); } }) : null;
   if (canvas) {
     wrap.append(el('p', 'muted hint', 'Drag to move. Scroll to zoom. Click a box to open it.'), canvas);
   } else {
@@ -114,7 +119,7 @@ function section(title) {
 }
 
 function link(id) {
-  var b = el('button', 'link', id);
+  var b = el('button', 'link', showId(DATA.project.key, id));
   b.type = 'button';
   b.addEventListener('click', function () { go({ node: id }); });
   return b;
@@ -132,7 +137,7 @@ function renderNodePage(id) {
   page.append(bar);
 
   page.append(el('h1', null, n.title));
-  var line = el('p', 'muted', n.id + ' \u00b7 ' + n.kind + ' \u00b7 ');
+  var line = el('p', 'muted', showId(DATA.project.key, n.id) + ' \u00b7 ' + n.kind + ' \u00b7 ');
   line.append(el('span', 'badge state-' + n.state, STATE_LABEL[n.state]));
   if (n.parent) { line.append(document.createTextNode(' \u00b7 part of ')); line.append(link(n.parent)); }
   page.append(line);
@@ -172,7 +177,7 @@ function renderNodePage(id) {
   if (!n.gaps.length) g.append(el('p', 'muted', 'No gaps.'));
   n.gaps.forEach(function (gap) {
     var box = el('div', 'gap' + (gap.status === 'open' ? '' : ' closed'));
-    box.append(el('p', null, gap.id + ' [' + gap.status + '] ' + (gap.kind ? '(' + gap.kind + ') ' : '') + gap.missing + (gap.where ? ' (' + gap.where + ')' : '')));
+    box.append(el('p', null, showId(DATA.project.key, gap.id) + ' [' + gap.status + '] ' + (gap.kind ? '(' + gap.kind + ') ' : '') + gap.missing + (gap.where ? ' (' + gap.where + ')' : '')));
     if (gap.note) box.append(el('p', 'muted', 'Note: ' + gap.note));
     g.append(box);
   });

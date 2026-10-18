@@ -1,8 +1,9 @@
 // Commands: parse arguments, call the rules, return one short line of text.
 import { parseArgs } from 'node:util';
-import { findProject, load, mutate, newNodeId, addEvent, listBoards, migrateLegacy, setActive, TOOL_NAME, DATA_DIR, PLUGIN_NAME } from './store.mjs';
+import { findProject, load, mutate, newNodeId, addEvent, listBoards, activeKey, migrateLegacy, setActive, TOOL_NAME, DATA_DIR, PLUGIN_NAME } from './store.mjs';
 import { decorateIds } from './ids.mjs';
 import { resolveBoard, boardsText } from './boards.mjs';
+import { openOverview } from './overview.mjs';
 import { children } from './model.mjs';
 import { approve, reopen, supersede, restore, closeGap, needNode, nextOrder, blank, raiseGapChecked, lintSaid } from './rules.mjs';
 import { ls, show, log, brief, HELP } from './text.mjs';
@@ -242,11 +243,23 @@ export function run(argv, cwd) {
   migrateLegacy(project.dir);
   if (cmd === 'boards') return boardsText(project.dir);
   if (cmd === 'use') return useBoard(project.dir, argv.slice(1));
-  const board = resolveBoard(project.dir, argv);
+  if (cmd === 'open' && wantsOverview(project.dir, argv)) {
+    const { file, opened } = openOverview(project.dir);
+    const quiet = argv.includes('--quiet');
+    return quiet ? '' : opened ? `opened ${file}` : `Could not open a browser. The page is here: ${file}`;
+  }
+  const board = resolveBoard(project.dir, argv.filter((a) => a !== '--all'));
   const out = execute(board.dir, board.argv);
   if (cmd !== 'ai' && !MUTATING[cmd]) return out;
   if (board.explicit) setActive(project.dir, board.key); // reads leave the pointer alone
   return decorateIds(out, board.key);
+}
+
+// `open --all`, or plain `open` with several boards, none named and none active, shows the overview.
+function wantsOverview(dataDir, argv) {
+  if (argv.includes('--all')) return true;
+  const named = argv.some((a) => a === '--board' || a.startsWith('--board='));
+  return !named && !activeKey(dataDir) && listBoards(dataDir).length > 1;
 }
 
 // `board use KEY`: points the active board at KEY.

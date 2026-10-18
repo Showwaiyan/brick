@@ -2,8 +2,9 @@
 import { execute } from './commands.mjs';
 import { initProject } from './init.mjs';
 import { parseRequest } from './refer.mjs';
-import { findProject, load, migrateLegacy, setActive, DATA_DIR, PLUGIN_NAME as PLUGIN } from './store.mjs';
+import { findProject, load, listBoards, activeKey, migrateLegacy, setActive, DATA_DIR, PLUGIN_NAME as PLUGIN } from './store.mjs';
 import { resolveForText } from './boards.mjs';
+import { openOverview } from './overview.mjs';
 import { decorateIds } from './ids.mjs';
 
 const TAG = `[${PLUGIN}]`;
@@ -32,6 +33,10 @@ export function runSlash(commandName, text, cwd) {
     const project = findProject(cwd);
     if (!project.exists) return `${TAG} No ${DATA_DIR}/ here. Run: /${PLUGIN}:init <what you want to build>`;
     migrateLegacy(project.dir);
+    if (action === 'open' && (words.toLowerCase() === 'all' || (!words && !activeKey(project.dir) && listBoards(project.dir).length > 1))) {
+      const { file, opened } = openOverview(project.dir);
+      return `${TAG} ${opened ? 'opened' : 'Could not open a browser. The page is here:'} ${file}`;
+    }
     const board = resolveForText(project.dir, words, action);
     if (board.needs) return `${TAG} ${board.needs}`;
     if (action === 'open') return `${TAG} ${execute(board.dir, ['open'])}`;
