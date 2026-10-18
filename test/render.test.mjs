@@ -119,3 +119,22 @@ test('a board page carries its key and a link back to the overview; the key show
   assert.match(html, /LOGIN-p1\.1/);
   assert.match(html, /All boards/);
 });
+
+test('page data carries the shown title next to the full name', async () => {
+  const dir = await newBoard('I want to build user query feature with express js in controller, services, repository pattern.');
+  let pd = pageData(load(dir), 'now');
+  assert.equal(pd.project.shown, 'User query feature with express js in…');
+  assert.match(pd.project.name, /^I want to build/);
+  execute(dir, ['ai', 'project', '--title', 'User query']);
+  pd = pageData(load(dir), 'now');
+  assert.equal(pd.project.shown, 'User query');
+  assert.match(pd.project.name, /^I want to build/);
+});
+
+test('the stylesheet styles tags and never reaches into a node with a descendant selector', () => {
+  const css = fs.readFileSync(path.resolve('src/page.css'), 'utf8');
+  assert.ok(!/\.pele-node[^{,>]*\s(rect|text)\b/.test(css), 'use > rect and > text');
+  for (const name of ['tag', 'tag-id', 'tag-state-approved', 'tag-state-has_gaps', 'tag-state-drafting', 'tag-state-superseded', 'tag-source', 'tag-sub', 'tag-gap', 'tag-key']) {
+    assert.ok(css.includes(`.${name}`), name);
+  }
+});

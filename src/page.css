@@ -54,14 +54,47 @@ h1, h2, h3, p { margin: 0; }
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 .pele-node { cursor: pointer; }
-.pele-node:hover rect, .pele-node:focus-visible rect { stroke: #2F6FED; stroke-width: 3; }
+.pele-node:hover > rect, .pele-node:focus-visible > rect { stroke: #2F6FED; stroke-width: 3; }
 .pele-node:focus-visible { outline: none; }
-.pele-node.approved rect { fill: #E3F4F0; stroke: #8FCFC2; }
-.pele-node.has_gaps rect { fill: #FFF1D6; stroke: #E8B04B; stroke-width: 2; }
-.pele-node.drafting rect { fill: #FFFFFF; stroke: #6F7A8A; stroke-dasharray: 5 3; }
-.pele-node.superseded rect { fill: #EDEFF3; stroke: #6F7A8A; stroke-dasharray: 5 3; opacity: .65; }
-.pele-node.io rect { fill: #14181F; stroke: #14181F; }
-.pele-node.io text { fill: #FFFFFF; }
+.pele-node.approved > rect { fill: #E3F4F0; stroke: #8FCFC2; }
+.pele-node.has_gaps > rect { fill: #FFF1D6; stroke: #E8B04B; stroke-width: 2; }
+.pele-node.drafting > rect { fill: #FFFFFF; stroke: #6F7A8A; stroke-dasharray: 5 3; }
+.pele-node.superseded > rect { fill: #EDEFF3; stroke: #6F7A8A; stroke-dasharray: 5 3; opacity: .65; }
+.pele-node.io > rect { fill: #14181F; stroke: #14181F; }
+.pele-node.io > text { fill: #FFFFFF; }
+
+/* tags: the id, state, source and counts of a node, drawn in the diagram and shown on the page */
+.pele-tags .tag rect { fill: #FFFFFF; stroke: #B8C0CC; stroke-width: 1; stroke-dasharray: none; opacity: 1; }
+.pele-tags .tag-text { font-size: 12px; fill: #1F2733; }
+.pele-tags .tag-id rect { stroke: #6F7A8A; }
+.pele-tags .tag-id .tag-text { font-family: var(--mono, monospace); }
+.pele-tags .tag-state-approved rect { fill: #C9EBE4; stroke: #8FCFC2; }
+.pele-tags .tag-state-approved .tag-text { fill: #0B6B5D; }
+.pele-tags .tag-state-has_gaps rect { fill: #FFE3A8; stroke: #E8B04B; }
+.pele-tags .tag-state-has_gaps .tag-text { fill: #8A4B00; }
+.pele-tags .tag-state-drafting rect { fill: #EEF0F4; stroke: #B8C0CC; }
+.pele-tags .tag-state-drafting .tag-text { fill: #4A5361; }
+.pele-tags .tag-state-superseded rect { fill: #E3E6EB; stroke: #B8C0CC; }
+.pele-tags .tag-state-superseded .tag-text { fill: #4A5361; text-decoration: line-through; }
+.pele-tags .tag-source rect { stroke: #2F6FED; }
+.pele-tags .tag-source .tag-text { fill: #1F4FB0; }
+.pele-tags .tag-sub rect { fill: #EEF0F4; stroke: #EEF0F4; }
+.pele-tags .tag-gap rect { stroke: #E8B04B; }
+.pele-tags .tag-gap .tag-text { fill: #8A4B00; }
+.pele-tags .tag-key rect { fill: #2B3340; stroke: #5B6472; }
+.pele-tags .tag-key .tag-text { fill: #FFFFFF; }
+
+.tags { display: inline-flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+span.tag { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 12px; line-height: 18px; border: 1px solid #B8C0CC; background: #FFFFFF; color: #1F2733; }
+span.tag-id { border-color: #6F7A8A; font-family: var(--mono); }
+span.tag-state-approved { background: #C9EBE4; border-color: #8FCFC2; color: #0B6B5D; }
+span.tag-state-has_gaps { background: #FFE3A8; border-color: #E8B04B; color: #8A4B00; }
+span.tag-state-drafting { background: #EEF0F4; color: #4A5361; }
+span.tag-state-superseded { background: #E3E6EB; color: #4A5361; text-decoration: line-through; }
+span.tag-source { border-color: #2F6FED; color: #1F4FB0; }
+span.tag-sub { background: #EEF0F4; border-color: #EEF0F4; }
+span.tag-gap { border-color: #E8B04B; color: #8A4B00; }
+.you-said { font-size: 14px; }
 
 /* cards */
 .card {

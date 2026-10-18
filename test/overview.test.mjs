@@ -21,6 +21,12 @@ test('one card per board: key, name, counts and a link to its page; the active o
   assert.match(html, /LOGIN[^<]*· Active/);
 });
 
+test('a card shows the short title, not the whole sentence', () => {
+  const html = overviewHtml([card('USER', 'I want to build user query feature with express js in a long sentence', { shown: 'User query feature' })], null);
+  assert.match(html, /<span class="card-title">User query feature<\/span>/);
+  assert.ok(!html.includes('long sentence'));
+});
+
 test('the overview is offline and safe: no script, no URLs, names escaped', () => {
   const html = overviewHtml([card('EVIL', '<img src=x onerror=alert(1)>')], null);
   assert.ok(!html.includes('<img'));

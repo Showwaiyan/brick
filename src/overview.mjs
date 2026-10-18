@@ -27,7 +27,7 @@ function cardHtml(b, active) {
   }
   const c = b.counts;
   const facts = [`${c.approved} approved`, `${c.drafting + c.has_gaps} drafting`, plural(b.open_gaps, 'open gap'), ...(c.superseded ? [`${c.superseded} superseded`] : [])];
-  return `<li><a class="board-card" href="boards/${escapeHtml(b.key)}/tree.html"><span class="card-title">${escapeHtml(b.name)}</span>` +
+  return `<li><a class="board-card" href="boards/${escapeHtml(b.key)}/tree.html"><span class="card-title">${escapeHtml(b.shown || b.name)}</span>` +
     `<span class="card-state">${escapeHtml(b.key)}${mark}</span><span class="card-sub">${facts.join(' · ')}</span></a></li>`;
 }
 
