@@ -2,7 +2,7 @@
 import { parseArgs } from 'node:util';
 import { findProject, load, mutate, nextId, addEvent, TOOL_NAME, DATA_DIR, PLUGIN_NAME } from './store.mjs';
 import { children } from './model.mjs';
-import { approve, reopen, supersede, restore, closeGap, needNode, nextOrder, blank, raiseGapChecked } from './rules.mjs';
+import { approve, reopen, supersede, restore, closeGap, needNode, nextOrder, blank, raiseGapChecked, lintSaid } from './rules.mjs';
 import { ls, show, log, brief, HELP } from './text.mjs';
 import { initProject } from './init.mjs';
 import { renderFile, renderQuiet } from './render.mjs';
@@ -152,7 +152,7 @@ function quoteOf(values) {
   const q = (values['user-said'] || '').trim();
   if (!q) throw new Error('--user-said is required: quote the words the user said that justify this. Record nothing the user has not said.');
   if (q.length > 400) throw new Error('--user-said is limited to 400 characters. Quote the key part.');
-  return q;
+  return lintSaid(q);
 }
 
 // AI commands: the only mutating commands the AI may run. No approve, reopen, supersede, restore, resolve or dismiss.

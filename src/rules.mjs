@@ -139,6 +139,29 @@ export function lintMissing(text) {
   return t;
 }
 
+// Quotes that only point at something the AI said ("option 2", "yes", "that one"). A speed bump, not a guarantee.
+const ORD = '(?:first|second|third|fourth|last|other|former|latter)';
+const POINTER_PATTERNS = [
+  /^(?:yes|yeah|yep|yup|ok|okay|sure|agreed|agree|fine|right|correct|exactly|good|great|perfect|sounds good|that works|do it|do it your way|go ahead|please do|why not)(?: please| thanks| thank you)?$/,
+  /^(?:option|number|choice|opt|#)\s*(?:\d+|[a-z]|one|two|three|four|five)$/,
+  /^(?:\d+|[a-d])$/,
+  new RegExp(`^(?:the )?${ORD}(?: one| option| choice)?$`),
+  /^(?:that|this|the same)(?: one)?$/,
+  new RegExp(`^(?:(?:let s |lets |i ll |i will |we ll |we will |i d |i would |we can |can we |ok |okay )*)(?:go|going|stick|pick|choose|take|use) (?:with )?(?:it|that|this|them|those|the same|your \\w+(?: \\w+)?|(?:option|number|choice|#)\\s*\\w+|(?:the )?${ORD}(?: one| option| choice)?)$`),
+  /^(?:your|ur) (?:idea|suggestion|proposal|recommendation|approach|way|option)(?: then| is fine| works)?$/,
+  /^(?:as|like) you (?:said|suggested|mentioned|proposed|recommended)$/,
+];
+
+// Throws when the quote only points at what the AI said; returns the trimmed quote otherwise.
+export function lintSaid(text) {
+  const q = String(text || '').trim();
+  const plain = q.toLowerCase().replace(/[^\p{L}\p{N}#]+/gu, ' ').trim();
+  if (!plain || POINTER_PATTERNS.some((re) => re.test(plain))) {
+    throw new Error('That only points at something Claude said. Ask the user to say it in their own words (what they chose, and why if they can), then record that.');
+  }
+  return q;
+}
+
 // The AI raises a gap. The user must have written something for the node first.
 export function raiseGapChecked(data, nodeId, missing, where, now) {
   const n = needNode(data, nodeId);

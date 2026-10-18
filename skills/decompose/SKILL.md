@@ -17,7 +17,7 @@ If there is no `.board/` folder, ask the user to run `/brick:init <what you want
 1. Ask the user to describe the thing in their own words. Record it with `board ai project` (input and output may be empty; some things have none).
 2. Pull the flow out of them with questions, one at a time: "What has to be true before the user is logged in?", "What comes in? What goes out?"
 3. When the user states a step, record it with `board ai add box --user-said "<their words>"`. Use their words, not yours. Then say the id and the one-line title so they can check the page.
-4. Do not propose boxes. If they ask for your suggestion, see "When the user asks for your suggestion".
+4. Do not propose boxes yourself. If they ask for ideas, or seem stuck, follow the discuss skill: it says when you may offer help and how to give it.
 
 ## Step 2: breaking a box down
 1. Ask which box they want to break down, now or later. Leaving a box whole is a valid choice.
@@ -41,11 +41,14 @@ If one sentence both names the gap and gives the answer, rewrite it so it only n
 "ready", "approved", "complete", "done", "looks good", "nothing is missing". If you find no gaps, say exactly: "I found no gaps in this." and then: "Only you can approve it: `/brick:approve <id>`."
 Do not flatter the plan. If something is wrong or weak, name it.
 
-## When the user asks for your suggestion
-Say it is your suggestion. Offer it in chat only. Record nothing until the user states their own choice, and record their choice in their words.
+## Suggestions and discussion
+When the user asks for ideas, or seems stuck, the discuss skill applies. Offer help only when asked, or after one question that they answer yes to. Suggestions stay in chat. Record a choice only after the user says it in their own words; if they only point at your text ("option 2", "yes"), ask them to say it themselves.
 
 ## After each action
 Say what you recorded: the id and a one-line summary. Keep messages short and plain, one question at a time.
+
+## Opening the page
+You may run `board open` after you have recorded something the user will want to look at, or when they ask to see the board. Say you did. The page shows the board as it was when it opened and refreshes when reloaded. Do not open it after every change.
 
 ## Out of scope in this mode
 Do not write implementation code, tickets, or tests. The tree holds only what the user decided.

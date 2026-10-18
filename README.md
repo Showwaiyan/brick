@@ -31,6 +31,14 @@ Then talk to Claude about it. The `decompose` skill loads on its own: the AI ask
 
 `/brick:init` creates `.board/` (gitignored) and adds the `.gitignore` line.
 
+## Talking it over
+
+You can ask Claude to help you think at any point: "any suggestions?", "compare X and Y", "what are the alternatives?", "I'm not sure how to explain this". It gives two or three options with the trade-offs, says what it knows and what it does not, and hands the decision back to you.
+
+If you seem stuck (for example "I don't know" twice about the same thing), Claude asks once whether you want its suggestions. Say no and it leaves that point alone. It never starts suggesting on its own.
+
+A suggestion is not a decision. Nothing from the discussion goes on the board until you say your choice in your own words. If you only reply "option 2" or "yes", Claude asks you to say it in a sentence, and the board refuses a quote that only points at what Claude said. Claude may also open the page for you after recording something, and tells you when it does.
+
 ## Your commands
 
 You write them in plain words: no flags, no quotes. They only work when **you** type them; the AI cannot trigger them. A node is named by its **title or its id** (`b3`, `p2`); a gap by its id (`g1`) or by the title of a node that has one open gap. Ids are needed when two nodes share a title.
@@ -73,7 +81,7 @@ The diagrams are drawn by [pele](https://github.com/obsidianmd/pele) when the bo
 - **A hook that cannot run does not block anything.** If `node` is missing, the hooks fail without stopping the AI.
 - **The Bash guard is a speed bump, not a lock.** It blocks `board approve|reopen|supersede|restore|init|add|edit|project|gap` and any bare `.board` path, and only in a project that has a board (with none, only `board init` is blocked). Words that are not subcommands, such as "the board is red" in a commit message, pass. It can be fooled by obfuscation: a quoted command name, a variable (`B=board; $B approve`), a pipe into `xargs`, or `cd .board`-style tricks that avoid the path word. Symlinks into `.board/` are caught by the write guard only.
 - **The gap lint is a heuristic.** It catches obvious slips such as "you should add...".
-- **"The AI never says ready, approved, complete or looks good" lives in the skill text only.** Code cannot enforce wording. Read what the AI says.
+- **"The AI never says ready, approved, complete or looks good" lives in the skill text only.** Code cannot enforce wording. Read what the AI says. The same goes for discussion mode: deciding that you seem stuck, marking suggestions as suggestions, and not steering you are the model's judgement, not code. The check that rejects a pointer quote ("option 2", "yes") is a heuristic and misses unusual phrasings.
 - **Tested headless (`claude -p`) with a scripted check (`node scripts/e2e-plugin.mjs`),** not yet in an interactive session. `MultiEdit` and `NotebookEdit` are covered by name in the write guard (unit-tested) but were not exercised in a real session.
 - **`.board/` is gitignored and not backed up by git.** Its event log is the only history. Back it up if you care about it.
 
