@@ -9,7 +9,7 @@ Today `.board/tree.json` holds exactly one project, `/brick:init` refuses a seco
 ## 2. Decisions already made
 
 - **Option C.** Each feature is a full board, the same as today's, and a thin layer above them lists the boards on an overview page. Boards share nothing.
-- **Ids carry the board.** `KEY-p3`, `KEY-b1`, `KEY-g2`. The letter (box, problem, gap) stays. A flat id for sub-problems: a sub-problem is a node with a parent, shown in the listing and on the page; ids are never paths, so moving a node never changes its id.
+- **Ids carry the board and the nesting.** `KEY-b1` (box), `KEY-p3` (a problem directly under a box, flat number as today), `KEY-p3.1`, `KEY-p3.1.2` (sub-problems: the parent's id, a dot, and a number), `KEY-g2` (gap, flat). The new number is the creation order among siblings, not their position, so `--after` does not change ids.
 - **The short form still works** (`p3`) when the board is known: the active board, or the only board.
 - **The AI resolves which board** by the rules in section 4. Human-typed commands use a stricter subset.
 
@@ -27,7 +27,8 @@ Today `.board/tree.json` holds exactly one project, `/brick:init` refuses a seco
 ```
 
 - **Key.** 2 to 6 characters, upper-case letters and digits, starting with a letter. Derived from the board name at init ("Export report" gives `EXPORT`, "Login" gives `LOGIN`; longer names are cut at 6) and shown back to the user. `board init "<name>" --key <KEY>` overrides it. A key is unique across the repo and never changes, because ids appear in quotes and history. Stored as `project.key`.
-- **Stored ids stay short** (`p3`). The full id is `KEY-p3`, built on output. Nothing in an existing `tree.json` is rewritten except adding `project.key`. Input accepts either form, key case-insensitive. A full id also names its board, so `LOGIN-p3` needs no other board hint.
+- **Nested ids.** `addNode` gives a child of node `X` the id `X.<n>` where `n` is one more than the highest existing child suffix of `X` (counted over all children, superseded included, so a number is never reused). Only problems directly under a box keep the flat `p<n>` counter. A node's parent never changes (there is no move command), so an id stays a true path; if a move command is ever added, a moved node keeps its old id, and the id then says where it was created. `store.validate`'s counter check applies to flat ids only; a dotted id is valid when its parent id exists and is the id with the last segment removed. `ids.mjs` sorts ids by segment numbers, not as text (`p3.2` before `p3.10`).
+- **Stored ids stay short** (without the key, for example `p3` or `p3.1`). The full id is `KEY-p3`, built on output. Nothing in an existing `tree.json` is rewritten except adding `project.key`. Input accepts either form, key case-insensitive. A full id also names its board, so `LOGIN-p3` needs no other board hint.
 - **Legacy layout.** If `.board/tree.json` exists at the root (a board made before this change), the first command that loads it derives a key from `project.name`, writes it into the file, and moves the file and `tree.html` into `boards/<KEY>/` with an atomic rename. Key clashes get a number suffix. A bad `tree.json` is left where it is and reported, as today.
 
 ## 4. Which board a message means
@@ -73,7 +74,7 @@ The brief gains the board list and the active board, and one rule line: resolve 
 
 ## 9. Tasks
 
-1. **Ids and keys.** Tests: `deriveKey` cases (long names, spaces, digits, clashes), `fullId`/`parseId` both forms, case-insensitive key.
+1. **Ids and keys.** Tests: `deriveKey` cases (long names, spaces, digits, clashes), `fullId`/`parseId` both forms with dotted ids, case-insensitive key; `addNode` gives `p3.1`, `p3.2`, `p3.1.1`; a superseded child's number is not reused; `--after` does not change numbering; validation accepts dotted ids and rejects one whose parent id does not match; natural sort (`p3.2` before `p3.10`).
 2. **Store layout and migration.** Tests: new layout, `listBoards`, `activeKey`, legacy single board moved with a key and its content unchanged, clashing keys, corrupt `tree.json` left alone.
 3. **Command resolution.** Tests: one board implied; `--board`; full id; active; two boards and none named stops; typed commands never guess; `use`, `boards`; `init` adds a second board and refuses a duplicate key; guard lists.
 4. **Page.** Tests: overview contents, links, no network, board page back link and full ids, flow labels.
