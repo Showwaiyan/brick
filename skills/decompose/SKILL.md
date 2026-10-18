@@ -9,29 +9,39 @@ The user decides how the problem is broken down. You ask questions, name what is
 
 ## What you can run
 - `board ai add`, `board ai edit`, `board ai project`, `board ai gap`
-- `board ls`, `board show <id>`, `board brief`, `board log`
+- `board ls`, `board show <id>`, `board brief`, `board log`, `board check [id]`, `board open`
 You cannot approve, reopen, supersede, restore, resolve or dismiss. Those are the user's commands. When one is needed, tell the user which one in plain words and give the slash command, then stop. The user writes it in their own words, with no flags: `/brick:approve <node id or title>`, `/brick:reopen <node> <why>`, `/brick:supersede <node> <why>`, `/brick:restore <node>`, `/brick:resolve <gap id or node> <note>`, `/brick:dismiss <gap id or node> <why>`. If you need something from the user to complete it (which node, or their reason), ask for it first, then give them the finished command to send.
 If there is no `.board/` folder, ask the user to run `/brick:init <what you want to build>` and wait.
 
 ## Step 1: the flow
 1. Ask the user to describe the thing in their own words. Record it with `board ai project` (input and output may be empty; some things have none).
 2. Pull the flow out of them with questions, one at a time: "What has to be true before the user is logged in?", "What comes in? What goes out?"
-3. When the user states a step, record it with `board ai add box --user-said "<their words>"`. Use their words, not yours. Then say the id and the one-line title so they can check the page.
+3. Before adding, run `board ls`. If the step is already a box, edit that box with `board ai edit` instead of adding a second one. When the user states a step, record it with `board ai add box --user-said "<their words>"`. Use their words, not yours. Then say the id and the one-line title so they can check the page.
 4. Do not propose boxes yourself. If they ask for ideas, or seem stuck, follow the discuss skill: it says when you may offer help and how to give it.
 
 ## Step 2: breaking a box down
 1. Ask which box they want to break down, now or later. Leaving a box whole is a valid choice.
-2. Ask for their breakdown first. Record each sub-problem with `board ai add problem --parent <id> --user-said "<their words>"`.
-3. A leaf is small enough when the user can state its input, its output and how to check it in one or two sentences, and could review the result in a few minutes. Say whether it passes this test as an observation. Do not call it ready.
+2. Ask for their breakdown first, unless they have already asked you to write it (then see "Drafting on request" and draft; do not ask them for their own breakdown). When they state sub-problems, in any form (a sentence, a list, after a colon), record each one at once with `board ai add problem --parent <id> --user-said "<their words>"` and say the ids, then ask your one question.
+3. When they have finished describing a node, or ask whether to split further, load the sizing skill and run `board check <id>`. State what the checks show as an observation. Do not call it ready.
+
+## Drafting on request
+You draft only when the user explicitly asks you to write the breakdown for them, at any level: "break this down for me", "you do it", "draft the flow", "come up with the steps", "write the contract for it". A question, "what do you think", or being stuck is not a request; the discuss skill applies.
+- Draft one level under that one node (or the top-level flow), with `board ai add box|problem ... --drafted --user-said "<the user's request, in their words>"`. The quote is the request, never a pointer to something you said earlier. For a contract on an existing node use `board ai edit <id> --drafted --user-said "<request>" --input .. --output .. --check ..`.
+- Do not ask them questions first. Draft from the node's title and description (and the rest of the board); if you had to assume something, say what you assumed after you have drafted. A draft they can correct is what they asked for.
+- Do not go deeper unless they ask again. "All the way down" in their words counts once.
+- Say what you created, and that these are your draft and stay drafting until the user approves them.
+- Then offer once: "Want me to look for gaps in this draft?" Do not critique your draft unasked. You are a weak critic of your own work; say so if they ask for gaps in it.
+- The same applies to the first flow: if they ask you to draft it from what they described, draft the boxes in order from their words.
+- If they type their own sub-problems, record them as usual, without `--drafted`.
 
 ## Naming gaps
-First check that the user has written something for the node. Then look for:
-- an input that nothing produces
-- an output that nothing uses
-- an assumption hidden in a step
-- two pieces that share state but were split apart
-- an empty, error, or limit case that nothing covers
-Record each with `board ai gap <id> --missing "<what is missing>"`. Say what is missing, not how to fill it.
+First check that the user has written something for the node (or that it is a draft they asked for). When they ask what is missing, how robust something is, or for gaps, sweep the whole list below, at the flow level and for each node. Record each distinct finding that applies to this node as its own gap, with the kind:
+- **other**: an input that nothing produces, an output that nothing uses, an empty step.
+- **edge-case**: empty, maximum and duplicate input; concurrent use; retries and idempotence; partial failure; timeouts; permission and ownership; time and ordering.
+- **architecture**: state shared by two boxes with no owner; an external dependency nobody owns; a failure path with no box; data that changes shape between boxes. Attach it to the box it affects and name the others in `--where`.
+- **assumption**: a step that assumes something no other step guarantees.
+- **order**: steps whose order matters but is not stated.
+Record each with `board ai gap <id> --missing "<what is missing>" --kind edge-case|architecture|assumption|order|other`. Record only what really applies, and no filler. Then tell the user what you found, grouped by kind. Say what is missing, not how to fill it.
 Good: "Nothing says what happens when the username does not exist."
 Good: "Check password assumes a user record exists, but nothing guarantees it."
 Bad: "You should add a not-found response." (that is the fix)

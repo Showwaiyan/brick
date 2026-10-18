@@ -145,7 +145,11 @@ function renderNodePage(id) {
 
   var who = section('Who wrote it');
   if (n.source === 'human') who.append(el('p', null, 'Typed by you'));
-  else {
+  else if (n.source === 'ai-draft') {
+    who.append(el('p', null, 'Drafted by Claude because you asked:'));
+    n.said.forEach(function (q) { who.append(el('blockquote', null, q)); });
+    if (n.state !== 'approved') who.append(el('p', 'muted', 'An AI draft: you have not approved it yet.'));
+  } else {
     who.append(el('p', null, 'Recorded by the AI from your words:'));
     n.said.forEach(function (q) { who.append(el('blockquote', null, q)); });
   }
@@ -168,7 +172,7 @@ function renderNodePage(id) {
   if (!n.gaps.length) g.append(el('p', 'muted', 'No gaps.'));
   n.gaps.forEach(function (gap) {
     var box = el('div', 'gap' + (gap.status === 'open' ? '' : ' closed'));
-    box.append(el('p', null, gap.id + ' [' + gap.status + '] ' + gap.missing + (gap.where ? ' (' + gap.where + ')' : '')));
+    box.append(el('p', null, gap.id + ' [' + gap.status + '] ' + (gap.kind ? '(' + gap.kind + ') ' : '') + gap.missing + (gap.where ? ' (' + gap.where + ')' : '')));
     if (gap.note) box.append(el('p', 'muted', 'Note: ' + gap.note));
     g.append(box);
   });

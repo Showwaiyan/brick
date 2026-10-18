@@ -21,13 +21,15 @@ Human commands (run these yourself; in Claude Code type them with a leading !):
   ${T} gap dismiss <gapId> --why "<text>"
 
 AI commands (the only writes the AI may run; each needs the user's own words):
-  ${T} ai add box|problem --title "<t>" --user-said "<quote>" [--parent <id>] [--after <id>] [--desc ..] [--input ..] [--output ..] [--check ..] [--limits ..]
-  ${T} ai edit <id> --user-said "<quote>" [--title ..] [--desc ..] [--input ..] [--output ..] [--check ..] [--limits ..]
+  ${T} ai add box|problem --title "<t>" --user-said "<quote>" [--drafted] [--parent <id>] [--after <id>] [--desc ..] [--input ..] [--output ..] [--check ..] [--limits ..]
+  ${T} ai edit <id> --user-said "<quote>" [--drafted] [--title ..] [--desc ..] [--input ..] [--output ..] [--check ..] [--limits ..]
+      (--drafted: only when the user asked you to write it for them; the quote is their request)
   ${T} ai project --user-said "<quote>" [--input ..] [--output ..]
-  ${T} ai gap <nodeId> --missing "<what is missing>" [--where "<location>"]
+  ${T} ai gap <nodeId> --missing "<what is missing>" [--kind edge-case|architecture|assumption|order|other] [--where "<location>"]
 
 Read-only (human or AI):
   ${T} ls | ${T} show <id> | ${T} log [--last N] | ${T} brief | ${T} help
+  ${T} check [id]          signals about size and shape (facts and flags, not a verdict)
   ${T} render              rebuild .board/tree.html
   ${T} open [--quiet]      rebuild it and open it in your browser
 `;
@@ -51,7 +53,8 @@ export function ls(data) {
     const state = displayState(data, n.id);
     const gaps = openGaps(data, n.id).length;
     const tag = state === 'superseded' ? '(superseded)' : `[${LABEL[state]}]`;
-    lines.push(`${'  '.repeat(depth + 1)}${n.id}  ${n.title}  ${tag}${gaps ? `  ${gaps} open gap${gaps > 1 ? 's' : ''}` : ''}`);
+    const draft = n.source === 'ai-draft' && n.status === 'drafting' ? '  AI draft' : '';
+    lines.push(`${'  '.repeat(depth + 1)}${n.id}  ${n.title}  ${tag}${draft}${gaps ? `  ${gaps} open gap${gaps > 1 ? 's' : ''}` : ''}`);
   }
   if (lines.length === 1) lines.push(`  (empty) Start with: ${T} add box "<title>"`);
   return lines.join('\n');
@@ -79,7 +82,7 @@ export function show(data, id) {
   const gaps = Object.values(data.gaps).filter((g) => g.node === id);
   if (gaps.length) {
     out.push('gaps:');
-    for (const g of gaps) out.push(`  ${g.id} [${g.status}] ${g.missing}${g.where ? ` (${g.where})` : ''}${g.note ? ` - ${g.note}` : ''}`);
+    for (const g of gaps) out.push(`  ${g.id} [${g.status}] ${g.kind ? `(${g.kind}) ` : ''}${g.missing}${g.where ? ` (${g.where})` : ''}${g.note ? ` - ${g.note}` : ''}`);
   }
   if (n.superseded) {
     const s = n.superseded;
@@ -118,8 +121,10 @@ export function brief(data) {
     `Open gaps: ${open.length}${open.length ? ` (${open.map((g) => `${g.id} on ${g.node}`).join(', ')})` : ''}`,
     `Next: ${nextStep(data)}`,
     `Tree: ${T} ls`,
-    'Discussion rules: never volunteer ideas, options, designs or recommendations. Ask questions and record what the user says.',
+    'Discussion rules: never volunteer ideas, options, designs or recommendations. When the user states a flow step, a sub-problem or a contract, record it at once in their words (board ai add, edit or project with --user-said, after loading the brick:decompose skill), say the id, then ask one question. Run board ls first, and edit a node that already exists instead of adding a duplicate.',
     'If the user says they are unsure or do not know, about the same point twice, ask once: "You sound unsure about <point>. Do you want my suggestions on it, or would you rather think it through yourself first?" Then stop and wait. After a no, you may offer once more if they are unsure about it again; after a second no, never offer on that point again unless they ask. In between, keep asking plain questions.',
     'Give ideas or comparisons only when the user asks for them or says yes to that offer, and load the brick:discuss skill with the Skill tool first.',
+    'When the user asks you to break something down for them or to draft the flow ("break it down for me", "draft the flow"), draft it with board ai add --drafted, one level, and do not ask them questions or for their own breakdown first: draft from the title and what is on the board, and say what you assumed afterwards. Draft only on such a request. When asked for gaps, sweep for gaps, edge cases and architecture issues (see the decompose skill).',
+    'When the user has finished describing a node, or asks whether to split further, run `board check <id>`, load the brick:sizing skill, and state what the checks show as an observation.',
   ].join('\n');
 }

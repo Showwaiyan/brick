@@ -39,6 +39,14 @@ If you seem stuck (for example "I don't know" twice about the same thing), Claud
 
 A suggestion is not a decision. Nothing from the discussion goes on the board until you say your choice in your own words. If you only reply "option 2" or "yes", Claude asks you to say it in a sentence, and the board refuses a quote that only points at what Claude said. Claude may also open the page for you after recording something, and tells you when it does.
 
+## Drafting, gaps and "is it enough?"
+
+**Writing the breakdown for you.** The AI drafts only when you ask, in your own words: "break down check password for me", "draft the flow", "write the contract for it". It drafts one level under that one node and says so. Drafted nodes are marked **AI draft** on the page (and in `board ls`) and stay drafting until you approve them; the page's "Who wrote it" shows your request. It does not go deeper unless you ask again, and it offers once to look for gaps in its draft. It is a weak critic of its own work, so read drafts yourself. If you type your own sub-problems, they are recorded as yours.
+
+**Gaps, edge cases and more.** When you ask what is missing, the AI sweeps for missing pieces, edge cases (empty, duplicate and maximum input, concurrency, retries, partial failure, timeouts, permissions, ordering), architecture gaps across boxes (shared state with no owner, an unowned dependency, a failure path with no box), assumptions, and order. Each finding is its own gap with a kind, shown on the page. A gap still only says what is missing.
+
+**Knowing when a breakdown is enough.** When you finish describing a node, or ask whether to split further, the AI runs `board check <id>` and tells you what the checks show: "by these checks it can stay whole" or "it has two purposes, so it could be split". Your call. The checks: one purpose; input, output and check stated; testable from the contract alone; reviewable in about 15 minutes; understandable by a newcomer; no hidden shared state with a sibling; and, for flow boxes, a clear boundary, no orphan inputs or outputs, an owner for failure cases, and an observable check. Soft limits: about 3 to 9 boxes at the top, about 4 levels deep. `board check` with no id summarises the whole board.
+
 ## Your commands
 
 You write them in plain words: no flags, no quotes. They only work when **you** type them; the AI cannot trigger them. A node is named by its **title or its id** (`b3`, `p2`); a gap by its id (`g1`) or by the title of a node that has one open gap. Ids are needed when two nodes share a title.
@@ -63,9 +71,9 @@ Rules: a node can be approved only when it is drafting, has a title, has no open
 
 Through its own `board` command (put on its PATH by the plugin), the AI may:
 
-- `board ai add|edit|project` to record what you said, each with `--user-said "<your words>"`.
-- `board ai gap <id> --missing ".."` to name what is missing. The AI cannot raise a gap on a node until you have written something for it, and a gap that sounds like a fix is rejected.
-- `board ls`, `show`, `log`, `brief`, `render`, `open`, `help` to look.
+- `board ai add|edit|project` to record what you said, each with `--user-said "<your words>"`. With `--drafted` (only when you asked it to write the breakdown for you) the node is marked as an AI draft.
+- `board ai gap <id> --missing ".." [--kind edge-case|architecture|assumption|order|other]` to name what is missing. The AI cannot raise a gap on a node until you have written something for it, and a gap that sounds like a fix is rejected.
+- `board ls`, `show`, `log`, `brief`, `check`, `render`, `open`, `help` to look.
 
 It cannot approve, reopen, supersede, restore, resolve or dismiss, and it cannot read or write `.board/` directly.
 
@@ -80,6 +88,7 @@ The diagrams are drawn by [pele](https://github.com/obsidianmd/pele) when the bo
 - **The guards are not a security boundary.** They stop accidents and drift. A determined model could obfuscate a command. They do not apply to what you type yourself, which is intended.
 - **A hook that cannot run does not block anything.** If `node` is missing, the hooks fail without stopping the AI.
 - **The Bash guard is a speed bump, not a lock.** It blocks `board approve|reopen|supersede|restore|init|add|edit|project|gap` and any bare `.board` path, and only in a project that has a board (with none, only `board init` is blocked). Words that are not subcommands, such as "the board is red" in a commit message, pass. It can be fooled by obfuscation: a quoted command name, a variable (`B=board; $B approve`), a pipe into `xargs`, or `cd .board`-style tricks that avoid the path word. Symlinks into `.board/` are caught by the write guard only.
+- **"Enough" is partly judgement.** `board check` computes what code can (contract set, title joining two things, siblings, depth, open gaps, AI drafts not approved). Whether a node has one purpose or can be tested alone is the model's reading, with the same imperfect reliability as the rest of the AI's judgement.
 - **The gap lint is a heuristic.** It catches obvious slips such as "you should add...".
 - **"The AI never says ready, approved, complete or looks good" lives in the skill text only.** Code cannot enforce wording. Read what the AI says. The same goes for discussion mode: deciding that you seem stuck, marking suggestions as suggestions, and not steering you are the model's judgement, not code. The check that rejects a pointer quote ("option 2", "yes") is a heuristic and misses unusual phrasings.
 - **Tested headless (`claude -p`) with a scripted check (`node scripts/e2e-plugin.mjs`),** not yet in an interactive session. `MultiEdit` and `NotebookEdit` are covered by name in the write guard (unit-tested) but were not exercised in a real session.

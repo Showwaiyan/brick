@@ -113,13 +113,16 @@ export function restore(data, id, now) {
 }
 
 // Records a gap on a node. No gate or lint yet; the `ai gap` command adds those.
-export function raiseGap(data, actor, nodeId, missing, where, now) {
+export function raiseGap(data, actor, nodeId, missing, where, now, kind = null) {
   needNode(data, nodeId);
   const id = nextId(data, 'g');
-  data.gaps[id] = { id, node: nodeId, missing, where: where || null, status: 'open', raised_at: now, closed_at: null, note: null };
+  data.gaps[id] = { id, node: nodeId, missing, where: where || null, status: 'open', raised_at: now, closed_at: null, note: null, ...(kind ? { kind } : {}) };
   addEvent(data, actor, 'gap', id, { node: nodeId }, now);
   return id;
 }
+
+// The kinds of gap the AI can name. Optional; a gap without one shows none.
+export const GAP_KINDS = ['edge-case', 'architecture', 'assumption', 'order', 'other'];
 
 // Phrases that suggest a fix instead of naming what is missing (a speed bump, not a guarantee).
 const FIX_PATTERNS = [
@@ -163,13 +166,14 @@ export function lintSaid(text) {
 }
 
 // The AI raises a gap. The user must have written something for the node first.
-export function raiseGapChecked(data, nodeId, missing, where, now) {
+export function raiseGapChecked(data, nodeId, missing, where, now, kind = null) {
   const n = needNode(data, nodeId);
+  if (kind && !GAP_KINDS.includes(kind)) throw new Error(`--kind must be one of: ${GAP_KINDS.join(', ')}.`);
   if (n.status === 'superseded') throw new Error(`${nodeId} is superseded; gaps cannot be raised on it.`);
   if (n.source !== 'human' && n.said.length === 0) {
     throw new Error('This node has no content from the user yet. Ask the user for their own attempt first.');
   }
-  return raiseGap(data, 'ai', nodeId, lintMissing(missing), where, now);
+  return raiseGap(data, 'ai', nodeId, lintMissing(missing), where, now, kind);
 }
 
 // Closes an open gap as resolved or dismissed. A note is required.

@@ -4,6 +4,7 @@ import { findProject, load, mutate, nextId, addEvent, TOOL_NAME, DATA_DIR, PLUGI
 import { children } from './model.mjs';
 import { approve, reopen, supersede, restore, closeGap, needNode, nextOrder, blank, raiseGapChecked, lintSaid } from './rules.mjs';
 import { ls, show, log, brief, HELP } from './text.mjs';
+import { checkText } from './signals.mjs';
 import { initProject } from './init.mjs';
 import { renderFile, renderQuiet } from './render.mjs';
 import { openFile } from './open.mjs';
@@ -59,11 +60,12 @@ export function addNode(data, f, now) {
     status: 'drafting', domain: 'software', source: f.source || 'human',
     said: f.said ? [f.said] : [], superseded: null, created_at: now, updated_at: now,
   };
-  addEvent(data, f.source === 'ai-scribe' ? 'ai' : 'human', 'add', id, { kind: f.kind, parent, title }, now);
+  const viaDraft = f.source === 'ai-draft';
+  addEvent(data, (f.source || 'human') === 'human' ? 'human' : 'ai', 'add', id, { kind: f.kind, parent, title, ...(viaDraft ? { via: 'draft' } : {}) }, now);
   return parent ? `added ${id} under ${parent}` : `added ${id}`;
 }
 
-// Edits a drafting node. `f` = { title, desc, contract, said } with only the changed fields set.
+// Edits a drafting node. `f` = { title, desc, contract, said, drafted } with only the changed fields set.
 export function editNode(data, id, f, actor, now) {
   const n = needNode(data, id);
   if (n.status === 'superseded') throw new Error(`${id} is superseded and cannot be edited.`);
@@ -81,7 +83,7 @@ export function editNode(data, id, f, actor, now) {
   if (!changed.length) throw new Error('Nothing to change. Give at least one of --title --desc --input --output --check --limits.');
   if (f.said) n.said.push(f.said);
   n.updated_at = now;
-  addEvent(data, actor, 'edit', id, { fields: changed }, now);
+  addEvent(data, actor, 'edit', id, { fields: changed, ...(f.drafted ? { via: 'draft' } : {}) }, now);
   return `edited ${id} (${changed.join(', ')})`;
 }
 
@@ -156,31 +158,31 @@ function quoteOf(values) {
 }
 
 // AI commands: the only mutating commands the AI may run. No approve, reopen, supersede, restore, resolve or dismiss.
-const SAID = { 'user-said': { type: 'string' } };
+const SAID = { 'user-said': { type: 'string' }, drafted: { type: 'boolean' } };
 const AI = {
   add(data, argv, now) {
     const { values, positionals } = parse(argv, { ...NODE_FLAGS, ...SAID, parent: { type: 'string' }, after: { type: 'string' } },
-      'ai add box|problem --title "<t>" --user-said "<quote>" [--parent <id>] [--after <id>] [--desc ..] [--input ..] [--output ..] [--check ..] [--limits ..]', 1);
+      'ai add box|problem --title "<t>" --user-said "<quote>" [--drafted] [--parent <id>] [--after <id>] [--desc ..] [--input ..] [--output ..] [--check ..] [--limits ..]', 1);
     if (!['box', 'problem'].includes(positionals[0])) throw new Error(`Say "box" or "problem", not "${positionals[0]}".`);
     const said = quoteOf(values);
     return addNode(data, { kind: positionals[0], title: values.title, parent: values.parent, after: values.after,
-      desc: values.desc, contract: contractOf(values), source: 'ai-scribe', said }, now);
+      desc: values.desc, contract: contractOf(values), source: values.drafted ? 'ai-draft' : 'ai-scribe', said }, now);
   },
   edit(data, argv, now) {
     const { values, positionals } = parse(argv, { ...NODE_FLAGS, ...SAID },
-      'ai edit <id> --user-said "<quote>" [--title ..] [--desc ..] [--input ..] [--output ..] [--check ..] [--limits ..]', 1);
+      'ai edit <id> --user-said "<quote>" [--drafted] [--title ..] [--desc ..] [--input ..] [--output ..] [--check ..] [--limits ..]', 1);
     const said = quoteOf(values);
-    return editNode(data, positionals[0], { title: values.title, desc: values.desc, contract: contractOf(values), said }, 'ai', now);
+    return editNode(data, positionals[0], { title: values.title, desc: values.desc, contract: contractOf(values), said, drafted: values.drafted }, 'ai', now);
   },
   project(data, argv, now) {
-    const { values } = parse(argv, { ...SAID, input: { type: 'string' }, output: { type: 'string' } },
+    const { values } = parse(argv, { 'user-said': SAID['user-said'], input: { type: 'string' }, output: { type: 'string' } },
       'ai project --user-said "<quote>" [--input ..] [--output ..]', 0);
     return setProject(data, values, 'ai', now, quoteOf(values));
   },
   gap(data, argv, now) {
-    const { values, positionals } = parse(argv, { missing: { type: 'string' }, where: { type: 'string' } },
-      'ai gap <nodeId> --missing "<what is missing>" [--where "<location>"]', 1);
-    return `raised ${raiseGapChecked(data, positionals[0], values.missing, values.where, now)} on ${positionals[0]}`;
+    const { values, positionals } = parse(argv, { missing: { type: 'string' }, where: { type: 'string' }, kind: { type: 'string' } },
+      'ai gap <nodeId> --missing "<what is missing>" [--kind edge-case|architecture|assumption|order|other] [--where "<location>"]', 1);
+    return `raised ${raiseGapChecked(data, positionals[0], values.missing, values.where, now, values.kind)} on ${positionals[0]}`;
   },
 };
 
@@ -195,6 +197,11 @@ const READING = {
   },
   ls: (data) => ls(data),
   show: (data, argv) => show(data, parse(argv, {}, 'show <id>', 1).positionals[0]),
+  check(data, argv) {
+    const { positionals } = parseArgs({ args: argv, allowPositionals: true, strict: true });
+    if (positionals.length > 1) throw new Error(`Usage: ${T} check [id]`);
+    return checkText(data, positionals[0]);
+  },
   log: (data, argv) => log(data, Number(parse(argv, { last: { type: 'string' } }, 'log [--last N]', 0).values.last || 20)),
   brief: (data) => brief(data),
 };
