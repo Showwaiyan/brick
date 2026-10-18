@@ -11,9 +11,9 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 
 // Short text for an event's detail, shown in the page history.
 function summary(e) {
-  return Object.values(e.detail || {})
-    .filter((v) => v !== null && v !== undefined && v !== '')
-    .map((v) => (Array.isArray(v) ? v.join(', ') : typeof v === 'object' ? JSON.stringify(v) : String(v)))
+  return Object.entries(e.detail || {})
+    .filter(([, v]) => v !== null && v !== undefined && v !== '')
+    .map(([k, v]) => (k === 'via' ? v : Array.isArray(v) ? v.join(', ') : typeof v === 'object' ? JSON.stringify(v) : String(v)))
     .join(' · ');
 }
 

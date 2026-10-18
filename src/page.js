@@ -145,7 +145,11 @@ function renderNodePage(id) {
 
   var who = section('Who wrote it');
   if (n.source === 'human') who.append(el('p', null, 'Typed by you'));
-  else {
+  else if (n.source === 'ai-draft') {
+    who.append(el('p', null, 'Drafted by Claude because you asked:'));
+    n.said.forEach(function (q) { who.append(el('blockquote', null, q)); });
+    if (n.state !== 'approved') who.append(el('p', 'muted', 'An AI draft: you have not approved it yet.'));
+  } else {
     who.append(el('p', null, 'Recorded by the AI from your words:'));
     n.said.forEach(function (q) { who.append(el('blockquote', null, q)); });
   }

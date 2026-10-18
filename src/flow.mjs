@@ -27,6 +27,7 @@ const dead = (pd, ids) => ids.filter((id) => pd.nodes[id].state === 'superseded'
 function nodeLine(pd, id, indent = '  ') {
   const n = pd.nodes[id];
   const sub = [`${STATE_LABEL[n.state] || n.state} · ${id}`,
+    n.source === 'ai-draft' && n.state !== 'approved' && n.state !== 'superseded' ? 'AI draft' : '',
     n.active_children ? `${n.active_children} sub` : '',
     n.open_gaps ? plural(n.open_gaps, 'gap') : ''].filter(Boolean).join(' · ');
   return `${indent}${id}["${escapeLabel(n.title)}<br/>${escapeLabel(sub)}"]:::${n.state}`;

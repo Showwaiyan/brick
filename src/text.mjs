@@ -21,8 +21,9 @@ Human commands (run these yourself; in Claude Code type them with a leading !):
   ${T} gap dismiss <gapId> --why "<text>"
 
 AI commands (the only writes the AI may run; each needs the user's own words):
-  ${T} ai add box|problem --title "<t>" --user-said "<quote>" [--parent <id>] [--after <id>] [--desc ..] [--input ..] [--output ..] [--check ..] [--limits ..]
-  ${T} ai edit <id> --user-said "<quote>" [--title ..] [--desc ..] [--input ..] [--output ..] [--check ..] [--limits ..]
+  ${T} ai add box|problem --title "<t>" --user-said "<quote>" [--drafted] [--parent <id>] [--after <id>] [--desc ..] [--input ..] [--output ..] [--check ..] [--limits ..]
+  ${T} ai edit <id> --user-said "<quote>" [--drafted] [--title ..] [--desc ..] [--input ..] [--output ..] [--check ..] [--limits ..]
+      (--drafted: only when the user asked you to write it for them; the quote is their request)
   ${T} ai project --user-said "<quote>" [--input ..] [--output ..]
   ${T} ai gap <nodeId> --missing "<what is missing>" [--where "<location>"]
 
@@ -52,7 +53,8 @@ export function ls(data) {
     const state = displayState(data, n.id);
     const gaps = openGaps(data, n.id).length;
     const tag = state === 'superseded' ? '(superseded)' : `[${LABEL[state]}]`;
-    lines.push(`${'  '.repeat(depth + 1)}${n.id}  ${n.title}  ${tag}${gaps ? `  ${gaps} open gap${gaps > 1 ? 's' : ''}` : ''}`);
+    const draft = n.source === 'ai-draft' && n.status === 'drafting' ? '  AI draft' : '';
+    lines.push(`${'  '.repeat(depth + 1)}${n.id}  ${n.title}  ${tag}${draft}${gaps ? `  ${gaps} open gap${gaps > 1 ? 's' : ''}` : ''}`);
   }
   if (lines.length === 1) lines.push(`  (empty) Start with: ${T} add box "<title>"`);
   return lines.join('\n');

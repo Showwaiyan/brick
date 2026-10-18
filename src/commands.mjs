@@ -60,11 +60,12 @@ export function addNode(data, f, now) {
     status: 'drafting', domain: 'software', source: f.source || 'human',
     said: f.said ? [f.said] : [], superseded: null, created_at: now, updated_at: now,
   };
-  addEvent(data, f.source === 'ai-scribe' ? 'ai' : 'human', 'add', id, { kind: f.kind, parent, title }, now);
+  const viaDraft = f.source === 'ai-draft';
+  addEvent(data, (f.source || 'human') === 'human' ? 'human' : 'ai', 'add', id, { kind: f.kind, parent, title, ...(viaDraft ? { via: 'draft' } : {}) }, now);
   return parent ? `added ${id} under ${parent}` : `added ${id}`;
 }
 
-// Edits a drafting node. `f` = { title, desc, contract, said } with only the changed fields set.
+// Edits a drafting node. `f` = { title, desc, contract, said, drafted } with only the changed fields set.
 export function editNode(data, id, f, actor, now) {
   const n = needNode(data, id);
   if (n.status === 'superseded') throw new Error(`${id} is superseded and cannot be edited.`);
@@ -82,7 +83,7 @@ export function editNode(data, id, f, actor, now) {
   if (!changed.length) throw new Error('Nothing to change. Give at least one of --title --desc --input --output --check --limits.');
   if (f.said) n.said.push(f.said);
   n.updated_at = now;
-  addEvent(data, actor, 'edit', id, { fields: changed }, now);
+  addEvent(data, actor, 'edit', id, { fields: changed, ...(f.drafted ? { via: 'draft' } : {}) }, now);
   return `edited ${id} (${changed.join(', ')})`;
 }
 
@@ -157,24 +158,24 @@ function quoteOf(values) {
 }
 
 // AI commands: the only mutating commands the AI may run. No approve, reopen, supersede, restore, resolve or dismiss.
-const SAID = { 'user-said': { type: 'string' } };
+const SAID = { 'user-said': { type: 'string' }, drafted: { type: 'boolean' } };
 const AI = {
   add(data, argv, now) {
     const { values, positionals } = parse(argv, { ...NODE_FLAGS, ...SAID, parent: { type: 'string' }, after: { type: 'string' } },
-      'ai add box|problem --title "<t>" --user-said "<quote>" [--parent <id>] [--after <id>] [--desc ..] [--input ..] [--output ..] [--check ..] [--limits ..]', 1);
+      'ai add box|problem --title "<t>" --user-said "<quote>" [--drafted] [--parent <id>] [--after <id>] [--desc ..] [--input ..] [--output ..] [--check ..] [--limits ..]', 1);
     if (!['box', 'problem'].includes(positionals[0])) throw new Error(`Say "box" or "problem", not "${positionals[0]}".`);
     const said = quoteOf(values);
     return addNode(data, { kind: positionals[0], title: values.title, parent: values.parent, after: values.after,
-      desc: values.desc, contract: contractOf(values), source: 'ai-scribe', said }, now);
+      desc: values.desc, contract: contractOf(values), source: values.drafted ? 'ai-draft' : 'ai-scribe', said }, now);
   },
   edit(data, argv, now) {
     const { values, positionals } = parse(argv, { ...NODE_FLAGS, ...SAID },
-      'ai edit <id> --user-said "<quote>" [--title ..] [--desc ..] [--input ..] [--output ..] [--check ..] [--limits ..]', 1);
+      'ai edit <id> --user-said "<quote>" [--drafted] [--title ..] [--desc ..] [--input ..] [--output ..] [--check ..] [--limits ..]', 1);
     const said = quoteOf(values);
-    return editNode(data, positionals[0], { title: values.title, desc: values.desc, contract: contractOf(values), said }, 'ai', now);
+    return editNode(data, positionals[0], { title: values.title, desc: values.desc, contract: contractOf(values), said, drafted: values.drafted }, 'ai', now);
   },
   project(data, argv, now) {
-    const { values } = parse(argv, { ...SAID, input: { type: 'string' }, output: { type: 'string' } },
+    const { values } = parse(argv, { 'user-said': SAID['user-said'], input: { type: 'string' }, output: { type: 'string' } },
       'ai project --user-said "<quote>" [--input ..] [--output ..]', 0);
     return setProject(data, values, 'ai', now, quoteOf(values));
   },
