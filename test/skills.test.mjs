@@ -111,3 +111,15 @@ test('decompose explains drafting on request and the gap sweep with kinds', () =
   assert.match(body, /edge-case/);
   assert.match(body, /sizing skill/);
 });
+
+test('decompose says how to pick the board, and init explains the key', () => {
+  const d = readSkill('decompose').body;
+  assert.match(d, /## Which board/);
+  assert.match(d, /--board <KEY>/);
+  assert.match(d, /board use <KEY>/);
+  assert.match(d, /full id/);
+  const init = readSkill('init').body;
+  assert.match(init, /key/);
+  assert.match(init, /\/brick:init <what you want to build>` again/);
+  assert.match(readSkill('open').body, /\/brick:open all/);
+});

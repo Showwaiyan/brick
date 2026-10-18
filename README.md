@@ -31,6 +31,17 @@ Then talk to Claude about it. The `decompose` skill loads on its own: the AI ask
 
 `/brick:init` creates `.board/` (gitignored) and adds the `.gitignore` line.
 
+## Several boards
+
+One project can hold several boards, one for each problem or feature. `/brick:init <what you want to build>` makes a new board each time you run it. Each board is a full board of its own, with its own approvals, gaps and history, and it shares nothing with the others.
+
+- **Keys.** A board's key is 2 to 6 capital letters or digits, made from its name ("Export report" gives `EXPORT`). It is shown when the board is made. Choose your own with `!board init "Export report" --key EXP`. It cannot be changed later.
+- **Ids.** `LOGIN-b1` is a box, `LOGIN-p3` a problem under it, `LOGIN-p3.1` a sub-problem of that and `LOGIN-p3.1.2` one level further down. `LOGIN-p3.1.g2` is the second gap on `p3.1`. A number is never reused. Inside the board you are using, `p3.1` is enough. Ids from before this change keep working.
+- **Which board.** Typed commands use the board named by a full id, else the active board, else the only board, else they stop and ask which board. They never guess from the topic. Claude does guess from the topic, but only for recording what you said: it says "Using board LOGIN." when it does, asks when two boards fit or none does, and never for approve, supersede, resolve, dismiss, reopen or restore.
+- **The active board** is the one you last made, switched to (`!board use LOGIN`) or named in a command that changed something. It is kept in `.board/active`, one per project, not one per chat, so two Claude sessions in the same project share it.
+- **The overview.** `/brick:open all` opens `.board/index.html`: one card per board with its counts, each linking to that board's page. Every board page has an "All boards" link.
+- **Layout.** Boards live in `.board/boards/<KEY>/`. A `.board/tree.json` from before this change is moved there the first time any command runs, with a key added; nothing else in it changes.
+
 ## Talking it over
 
 You can ask Claude to help you think at any point: "any suggestions?", "compare X and Y", "what are the alternatives?", "I'm not sure how to explain this". It gives two or three options with the trade-offs, says what it knows and what it does not, and hands the decision back to you.
@@ -79,7 +90,7 @@ It cannot approve, reopen, supersede, restore, resolve or dismiss, and it cannot
 
 ## The page
 
-`.board/tree.html` is one file. It works from `file://`, offline, with no network requests. **Flow** shows input, boxes in order and output, with dropped boxes in a group of their own. **Tree** shows every node from the project down. Both are drawn on a surface you can pan and zoom: drag to move, scroll or pinch to zoom, `+` `-` `Fit` buttons, arrow keys when focused. Click a box to open its page: its planned flow of sub-steps, who wrote it, description, contract, gaps and history. The page never acts, and it refreshes only when you reload it.
+Each board has one page, `.board/boards/<KEY>/tree.html`. It works from `file://`, offline, with no network requests. **Flow** shows input, boxes in order and output, with dropped boxes in a group of their own. **Tree** shows every node from the project down. Both are drawn on a surface you can pan and zoom: drag to move, scroll or pinch to zoom, `+` `-` `Fit` buttons, arrow keys when focused. Click a box to open its page: its planned flow of sub-steps, who wrote it, description, contract, gaps and history. The page never acts, and it refreshes only when you reload it.
 
 The diagrams are drawn by [pele](https://github.com/obsidianmd/pele) when the board is saved, not in the page. Claude Code installs pele with the plugin (it is listed in `package.json`). If it is missing, the page falls back to a plain list; run `npm install` in the plugin folder.
 
@@ -89,6 +100,7 @@ The diagrams are drawn by [pele](https://github.com/obsidianmd/pele) when the bo
 - **A hook that cannot run does not block anything.** If `node` is missing, the hooks fail without stopping the AI.
 - **The Bash guard is a speed bump, not a lock.** It blocks `board approve|reopen|supersede|restore|init|add|edit|project|gap` and any bare `.board` path, and only in a project that has a board (with none, only `board init` is blocked). Words that are not subcommands, such as "the board is red" in a commit message, pass. It can be fooled by obfuscation: a quoted command name, a variable (`B=board; $B approve`), a pipe into `xargs`, or `cd .board`-style tricks that avoid the path word. Symlinks into `.board/` are caught by the write guard only.
 - **"Enough" is partly judgement.** `board check` computes what code can (contract set, title joining two things, siblings, depth, open gaps, AI drafts not approved). Whether a node has one purpose or can be tested alone is the model's reading, with the same imperfect reliability as the rest of the AI's judgement.
+- **Choosing the board is partly judgement.** Claude matches your topic to a board by its own reading, and says which board it used so you can catch a wrong guess. The active board is per project, not per chat.
 - **The gap lint is a heuristic.** It catches obvious slips such as "you should add...".
 - **"The AI never says ready, approved, complete or looks good" lives in the skill text only.** Code cannot enforce wording. Read what the AI says. The same goes for discussion mode: deciding that you seem stuck, marking suggestions as suggestions, and not steering you are the model's judgement, not code. The check that rejects a pointer quote ("option 2", "yes") is a heuristic and misses unusual phrasings.
 - **Tested headless (`claude -p`) with a scripted check (`node scripts/e2e-plugin.mjs`),** not yet in an interactive session. `MultiEdit` and `NotebookEdit` are covered by name in the write guard (unit-tested) but were not exercised in a real session.

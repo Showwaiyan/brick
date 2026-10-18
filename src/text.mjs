@@ -121,11 +121,15 @@ function nextStep(data) {
 const boardsLine = ({ boards, active }) =>
   `Boards: ${boards.map((b) => `${b.key}${b.key === active ? ' (active)' : ''}`).join(', ')}`;
 
-// With several boards and none active: only the list and what to do. The board rules come in a later line.
+// How the AI picks a board when there are several. Typed commands follow stricter rules in code.
+const BOARD_RULES = 'Several boards: the active mark is only the default for typed commands. For your own commands pick the board in this order, and put --board <KEY> (or a full id like LOGIN-p3) on every board command. (1) The user names a board or a full id. (2) The user made or opened a board in this chat: keep using it. (3) They name no board, but the feature or problem they talk about matches exactly one board\'s title, nodes or description: use it and say "Using board <KEY>." once; never do this for approve, supersede, resolve, dismiss, reopen or restore, which need the board named. (4) Otherwise, or if two boards fit, ask which board before you record anything. After the user switches to another board, run `board use <KEY>`.';
+
+// With several boards and none active: the list, what to do, and the rules.
 export function briefNoActive(ctx) {
   return [
     boardsLine({ boards: ctx.boards, active: null }),
-    'No board is active. Ask the user which board they mean before recording anything, or run `board use <KEY>` when they name one.',
+    'No board is active. Ask the user which board they mean before recording anything.',
+    BOARD_RULES,
   ].join('\n');
 }
 
@@ -147,5 +151,6 @@ export function brief(data, ctx = null) {
     'Give ideas or comparisons only when the user asks for them or says yes to that offer, and load the brick:discuss skill with the Skill tool first.',
     'When the user asks you to break something down for them or to draft the flow ("break it down for me", "draft the flow"), draft it with board ai add --drafted, one level, and do not ask them questions or for their own breakdown first: draft from the title and what is on the board, and say what you assumed afterwards. Draft only on such a request. When asked for gaps, sweep for gaps, edge cases and architecture issues (see the decompose skill).',
     'When the user has finished describing a node, or asks whether to split further, run `board check <id>`, load the brick:sizing skill, and state what the checks show as an observation.',
+    ...(many ? [BOARD_RULES] : []),
   ].join('\n');
 }
