@@ -1,65 +1,93 @@
-# brick: drawing the Flow view with pele
+# brick: drawing the board with pele, on a pan-and-zoom canvas
 
-Status: draft for review. Branch `feat/pele-flow`.
+Status: draft v2 for review (v1 covered only the Flow view). Branch `feat/pele-flow`. Spike results: `docs/dry-run/pele-spike.md`.
 
 ## 1. Why
 
-The Flow view is laid out by our own code: a CSS grid in `src/page.css` and card placement in `renderFlow()` in `src/page.js`. Every change to spacing, arrows or wrapping is more of that code, and the style is not good enough today. The roadmap adds more drawings (planned against actual flowcharts, a Kanban). We would rather describe the diagram and let a library place it.
+The Flow and Tree views are laid out by our own code (a CSS grid and nested lists), and the page scrolls. That is fine for 4 boxes and bad for 30. The roadmap adds more drawings (planned against actual flowcharts, a Kanban). We want to describe a diagram and let a library place it, and we want a surface the user can pan and zoom instead of scrolling.
 
-[pele](https://github.com/obsidianmd/pele) (MIT, no runtime dependencies, v1.6.0) renders Mermaid text to SVG. Colours and fonts come from `--pele-*` CSS variables.
+[pele](https://github.com/obsidianmd/pele) (MIT, no runtime dependencies, v1.6.0) renders Mermaid text to SVG, and colours and fonts come from `--pele-*` CSS variables.
 
-## 2. What the spike showed (2026-10-18)
+## 2. What the spike showed
 
-Done with `pele@1.6.0` in plain Node, nothing in the repo changed.
-
-- `render(text)` is synchronous and returns `{ svg }` with no browser. So `board render` can draw the diagram and embed the SVG. The 677 KB library does **not** go into `tree.html`.
-- Each node is `<g class="pele-node <classes>" data-id="b1">`. Classes set with `:::name` land on that group. One delegated click listener on the SVG can read `data-id`.
-- Text width is estimated in Node, not measured with the real font. Boxes may be a little off.
-- The package also has `kanban` and `mindmap` diagram types, which match later roadmap items. Not used here.
-
-Still unproven (the first task checks them): a real click in a browser, how it looks in light and dark, long flows, and a title with odd characters.
+- `render(text)` is synchronous and runs in plain Node, 1-8 ms per diagram, 3-19 KB of SVG. So `board render` draws the diagrams and embeds the SVG. The 677 KB library does not go into `tree.html`.
+- Every node is `<g class="pele-node <classes>" data-id="b1">`. One delegated listener reads the id. State classes land on the node group, so colours, dashes and the selected border are our CSS.
+- Light and dark work through variables. Hostile titles are shown as text.
+- Wide flows are the problem: 12 boxes are 2689 px wide, 30 are 6890 px. Fitted to the panel they are unreadable. This is what the canvas fixes.
+- Pele ships its own `enableZoom`, but it needs the library in the page. We write our own small pan and zoom instead.
 
 ## 3. Scope
 
-In: the Flow view only, one drawing path, and the branch is a trial. If it looks worse than today, we do not merge it.
+In: the Flow and Tree views drawn by pele on a shared pan-and-zoom canvas, and a node's details moved from a side panel to its own page that also draws the node's own flowchart. The "Next commands" section is removed.
 
-Out: the Tree view (the user will redo Flow and Tree styling later), the details panel, any change to `tree.json`, commands or guards.
+Out: any change to `tree.json`, commands, guards or hooks. The build-pipeline "actual" flowchart is only reserved a place (section 4.4). If the result looks worse than today, we do not merge the branch.
 
 ## 4. Design
 
-**Where the SVG is made.** `src/flow.mjs` (new, under 100 lines) exports `flowMermaid(pageData)` and `flowSvg(pageData)`. `renderHtml()` adds `flow_svg` to the embedded page data. If pele throws or the source is too large, `flow_svg` is `null` and the page uses the existing grid flow, so the page never goes blank.
+### 4.1 Diagram text (our code, Node side)
 
-**Mermaid text, built from page data only** (the same data the page already gets, so no rule is repeated):
+New `src/flow.mjs` (under 150 lines), working only from the page data the page already gets:
 
-- `flowchart LR`.
-- Project input and output are the first and last boxes, drawn as stadium shapes (`id(["..."])`), only when set.
-- Each live root box, in order, is a node `b1["Title"]` joined to the next by an arrow.
-- Dropped roots are not chained. They sit in a `subgraph` titled "Dropped" with the class `superseded`.
-- Each node gets a class from its display state: `approved`, `has_gaps`, `drafting`, `superseded`. Gap and sub-problem counts go on a second line of the label.
-- Titles are untrusted text. Each label is written in quoted form with `"` and the characters Mermaid treats as markup replaced by their entity codes. A test feeds `"`, `]`, `<b>`, `\`, newlines and a very long title.
+- `boardMermaid(pd)`: `flowchart LR`, project input and output as stadium shapes (only when set), live top-level boxes in order joined by arrows, dropped boxes in a `subgraph "Dropped"` with the `superseded` class and not chained.
+- `treeMermaid(pd)`: `flowchart TD`, every live node with an arrow from its parent, dropped nodes dashed. Same state classes.
+- `nodeMermaid(pd, id)`: `flowchart LR` of that node's active children in order, or `null` when it has none.
+- Labels are two lines: title, then state, id and counts. Titles are untrusted: quoted form, with `"`, `[`, `]`, `<`, `>`, `&` and `\` written as Mermaid entity codes. A test feeds each of them plus a 300-character title and a newline.
+- `drawSvg(text)` runs pele and returns the SVG string, or `null` if pele throws or the text is too large. The page keeps working, with a plain "could not draw" notice and the details pages intact.
 
-**Page side.** `renderFlow()` creates a container, sets its content from `DATA.flow_svg`, and attaches one click listener: `e.target.closest('.pele-node')`, then `go({ node: id })`, the same toggle the cards use today. The selected node gets the class `selected`, restored on every `draw()`. This is the one place the page inserts markup instead of using `createElement`; the string comes from our own build step, pele escapes diagram text, and the safe-embedding rule (`safeJson`) already covers the data copy.
+`renderHtml()` adds `board_svg`, `tree_svg` and a `flow_svg` on each node that has one to the embedded data. About 20 KB each at most.
 
-**Styling.** `page.css` sets the `--pele-*` variables from the page's existing colour variables for both colour schemes, and four rules for the state classes plus `selected`. No spacing code.
+### 4.2 The canvas (page side, our code)
 
-**Keyboard.** Each `.pele-node` gets `tabindex="0"`, `role="button"` and Enter/Space handling in the page script, so the view stays usable without a mouse. The cards had this for free.
+One small component in `src/canvas.js` (inlined with the page, about 80 lines) that takes an SVG and gives:
 
-**The library.** Vendored as `vendor/pele/pele.js` with its LICENSE and a `VERSION` file, imported by `src/flow.mjs`. Exact version pinned, no `npm install` for users, no `package.json` dependency. Loaded lazily inside `flowSvg` so the CLI and the hooks start as fast as before.
+- drag to pan, wheel and trackpad pinch to zoom around the pointer, `+` `-` `Fit` buttons, arrow keys and `+`/`-` when focused;
+- the SVG keeps its natural size (pele's `max-width:100%` is turned off), and the component sets the SVG `viewBox` for pan and zoom, so text stays sharp;
+- it starts on "fit", then never zooms out below a readable level by itself: when fitting would make text smaller than about 9 px, it starts at the left, zoomed to a readable level, and the user pans;
+- clicks and drags are told apart, so a drag does not open a node.
+
+This is an SVG on a pannable surface, **not** an HTML `<canvas>` element. A real canvas would be a bitmap: we would lose per-node clicks, keyboard access, text selection and CSS styling, which are what made the spike work.
+
+### 4.3 Board view
+
+`Flow` and `Tree` tabs stay. Each shows its SVG in the canvas, full width, no side panel. Clicking a node goes to its details page. Each node group gets `tabindex="0"`, `role="link"` and Enter/Space handling, so keyboard use still works. Light and dark come from the `--pele-*` variables and four state rules in `page.css`, set once.
+
+### 4.4 Details page
+
+Route: `#node=b3` (the hash scheme the page already uses). The page replaces the board view; a "Back to board" link returns to the view that was open. Single readable column:
+
+1. Title, id, kind, state badge.
+2. **Flow** (new): the node's own flowchart from `nodeMermaid`, in the same canvas at a smaller height. Children are clickable and open their pages. A node with no children shows "No sub-steps yet." This section is titled **Planned flow**, so the build pipeline can later add an **Actual flow** beside it without reshaping the page.
+3. Who wrote it, Description, Contract, Gaps, Superseded, History: the same content as today.
+
+### 4.5 Removing "Next commands"
+
+Removed from the details page and from the data (`next_commands` in `pageData`, `nextCommands` in `model.mjs`, and their tests). The reasoning:
+
+- You type commands in plain words now (`/brick:approve check password`), so the exact string is not needed.
+- The list also repeated the gap commands, which the Gaps section already shows by gap id.
+- What the section did add was knowing which actions are valid right now. If that is wanted, a one-line "Why it can't be approved yet" using the existing approval check is a better answer than a list of commands. Not part of this work; say if you want it.
+
+The gap command chips (`/brick:resolve g1 <note>`) are removed for the same reason; the gap id and status stay.
+
+### 4.6 The library
+
+Vendored as `vendor/pele/pele.js` with its LICENSE and a `VERSION` file; exact version pinned, no `npm install` for users, no dependency in `package.json`. Loaded with a dynamic `import()` inside `drawSvg`, so the CLI and hooks start as fast as before.
 
 ## 5. Tasks
 
-1. **Browser spike (decides go or no-go).** Render the demo board's flow to a standalone HTML file, open it in the browser, and confirm: clicking a node reads its id, the state colours apply in light and dark, the size of the file, and the look at 4, 12 and 30 boxes. Output: a short note in `docs/dry-run/pele-spike.md`. If clicks or readability fail, stop and report.
-2. **`src/flow.mjs` with tests** (`test/flow.test.mjs`): Mermaid text for no boxes, one box, boxes with input and output, dropped boxes, and hostile titles; `flowSvg` returns `null` instead of throwing.
-3. **Embed and draw.** Vendor the library, add `flow_svg` to `renderHtml`, replace the body of `renderFlow()` (old grid kept as the fallback), add the click, selected and keyboard handling, and the CSS variables. Update the render tests.
-4. **Check in a real browser** with `/brick:open` on a board with every state, and compare with the old Flow. Report.
+1. **Browser spike (done).** See `docs/dry-run/pele-spike.md`.
+2. **`src/flow.mjs` and tests** (`test/flow.test.mjs`): the three Mermaid builders for no boxes, one box, input and output, dropped boxes, deep trees, hostile titles; `drawSvg` returns `null` instead of throwing.
+3. **Canvas component and details page.** Vendor pele; add the SVG fields to `renderHtml`; `src/canvas.js` with a test of its pan and zoom arithmetic in Node; replace `renderFlow`/`renderTree`/`renderDetail` in `page.js`; remove `next_commands` and the gap chips; page CSS. Update the render and model tests.
+4. **Check in a real browser** (served over localhost, since the browser pane does not run scripts from `file://`): board with every state, 30 boxes, a node with children and one without, a hostile title, light and dark, keyboard only, a drag that must not open a node. Report with screenshots.
 
 ## 6. Risks
 
-- **Looks no better.** Mitigated by task 1 coming first and the branch not being merged on a bad result.
-- **Text widths off in Node.** If boxes clip text, fall back to a wider minimum or let the page re-render with `mount()` (needs the 677 KB library in the page, which we want to avoid).
-- **Young library.** Pinned and vendored, so an upstream change cannot break an existing install.
-- **Page-inserted markup.** Limited to pele's output for text we have already escaped; covered by the hostile-title test.
+- **Pan and zoom feels bad.** It is our code, so it is tunable, and task 4 tests it by hand. The fallback is pele's own `enableZoom`, at the cost of the library in the page.
+- **Looks no better.** Not merged.
+- **Estimated text widths in Node.** Boxes may clip text slightly. Mitigated with a wider minimum; checked in task 4.
+- **Young library.** Pinned and vendored.
+- **Page-inserted markup.** The SVG is inserted as markup instead of built with `createElement`. It comes from our build step, pele escapes diagram text, and the hostile-title test covers it.
 
 ## 7. Not decided here
 
-How to restyle the Tree view (maybe pele's `mindmap`, maybe a plain outline). Left for after the Flow trial.
+Whether the Tree canvas reads well as a top-down flowchart for deep trees (task 4 will show it; a mindmap is the alternative). The "actual" flowchart after implementation, which belongs to the build-pipeline work.
