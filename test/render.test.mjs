@@ -43,11 +43,12 @@ test('the page is offline and safe: no URLs, no fetch, no innerHTML, scripts par
   const r = spawnSync('node', [path.resolve('bin/board.mjs'), 'init', 'User login', '--demo'], { cwd: dir, encoding: 'utf8' });
   assert.equal(r.status, 0, r.stderr);
   const html = fs.readFileSync(path.join(dir, '.board/tree.html'), 'utf8');
-  assert.ok(!/https?:\/\//.test(html));
+  // the only URL allowed is the SVG namespace name, which is an identifier and is never fetched
+  assert.ok(!/https?:\/\//.test(html.replace(/xmlns=\\?"http:\/\/www\.w3\.org\/2000\/svg\\?"/g, '')));
+  assert.match(html, /"board_svg":"\\u003csvg /, 'the board diagram is embedded');
   assert.ok(!html.includes('fetch('));
   assert.ok(!html.includes('<link') && !html.includes(' src='));
-  const js = fs.readFileSync(path.resolve('src/page.js'), 'utf8');
-  assert.ok(!js.includes('innerHTML'));
+  for (const f of ['src/page.js', 'src/canvas.js']) assert.ok(!fs.readFileSync(path.resolve(f), 'utf8').includes('innerHTML'), f);
   const file = path.join(tmp(), 'embedded.js');
   fs.writeFileSync(file, scripts(html).code);
   const check = spawnSync('node', ['--check', file], { encoding: 'utf8' });
@@ -75,7 +76,7 @@ test('pageData carries states, commands, counts and history for the page', async
   assert.equal(p.nodes.b1.active_children, 1);
   assert.equal(p.nodes.p1.state, 'drafting');
   assert.deepEqual(p.counts, { approved: 0, drafting: 2, superseded: 0, open_gaps: 0 });
-  assert.ok(p.nodes.p1.next_commands.includes('/brick:approve p1'));
+  assert.ok(!("next_commands" in p.nodes.p1));
   assert.equal(p.nodes.p1.history[0].action, 'add');
   assert.equal(p.generated_at, 'T');
 });
@@ -87,4 +88,20 @@ test('render and open commands; open never throws', async () => {
   assert.equal(openFile('/x', () => ({ status: 1 })), false);
   assert.equal(openFile('/x', () => ({ error: new Error('no') })), false);
   assert.equal(openFile('/x', () => { throw new Error('boom'); }), false);
+});
+
+test('without pele installed the page still renders, with a plain list instead of diagrams', () => {
+  const copy = tmp();
+  fs.cpSync(path.resolve('src'), path.join(copy, 'src'), { recursive: true });
+  fs.cpSync(path.resolve('bin'), path.join(copy, 'bin'), { recursive: true });
+  fs.writeFileSync(path.join(copy, 'package.json'), '{"type":"module"}');
+  const work = path.join(tmp(), 'w');
+  fs.mkdirSync(work);
+  const r = spawnSync('node', [path.join(copy, 'bin/board.mjs'), 'init', 'No pele', '--demo'], { cwd: work, encoding: 'utf8' });
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(r.stderr, '', 'no warnings');
+  const html = fs.readFileSync(path.join(work, '.board/tree.html'), 'utf8');
+  assert.match(html, /"board_svg":null/);
+  assert.match(html, /"tree_svg":null/);
+  assert.match(fs.readFileSync(path.resolve('src/page.js'), 'utf8'), /could not be drawn/);
 });
