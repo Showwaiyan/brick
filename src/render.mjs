@@ -9,7 +9,6 @@ import { addDiagrams } from './flow.mjs';
 import { compareIds } from './ids.mjs';
 import { renderOverview } from './overview.mjs';
 import { shownTitle } from './title.mjs';
-import { seenList, repoRoot } from './seen.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
@@ -23,7 +22,6 @@ function summary(e) {
 
 // Everything the page needs, with all rules already applied (the page has none).
 export function pageData(data, now, opts = {}) {
-  const notes = (id) => (opts.root ? seenList(data, opts.root, id) : []);
   const nodes = {};
   for (const n of Object.values(data.nodes)) {
     const gaps = Object.values(data.gaps).filter((g) => g.node === n.id)
@@ -35,15 +33,13 @@ export function pageData(data, now, opts = {}) {
       children: children(data, n.id).map((c) => c.id),
       active_children: activeChildren(data, n.id).length,
       open_gaps: openGaps(data, n.id).length,
-      gaps: gaps.map((g) => ({ id: g.id, missing: g.missing, where: g.where, status: g.status, note: g.note, kind: g.kind || null,
-        seen: g.seen && data.seen?.[g.seen] ? { id: g.seen, path: data.seen[g.seen].path } : null })),
-      seen: notes(n.id),
+      gaps: gaps.map((g) => ({ id: g.id, missing: g.missing, where: g.where, status: g.status, note: g.note, kind: g.kind || null })),
       history: eventsFor(data, n.id).slice(0, 10).map((e) => ({ seq: e.seq, at: e.at, actor: e.actor, action: e.action, summary: summary(e) })),
     };
   }
   const states = Object.values(nodes).map((n) => n.state);
   return {
-    project: { ...data.project, shown: shownTitle(data.project), seen: notes(null) }, generated_at: now, tool: TOOL_NAME, overview: opts.overview || null,
+    project: { ...data.project, shown: shownTitle(data.project) }, generated_at: now, tool: TOOL_NAME, overview: opts.overview || null,
     roots: children(data, null).map((n) => n.id), nodes,
     counts: {
       approved: states.filter((s) => s === 'approved').length,
@@ -97,7 +93,7 @@ ${js}</script>
 export function renderFile(dir) {
   const file = path.join(dir, 'tree.html');
   const tmp = `${file}.${process.pid}.tmp`;
-  fs.writeFileSync(tmp, renderHtml(load(dir), undefined, { overview: dataDirOf(dir) ? '../../index.html' : null, root: repoRoot(dir) }));
+  fs.writeFileSync(tmp, renderHtml(load(dir), undefined, { overview: dataDirOf(dir) ? '../../index.html' : null }));
   fs.renameSync(tmp, file);
   return file;
 }

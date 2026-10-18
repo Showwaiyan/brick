@@ -1,5 +1,8 @@
 # brick: code seen (ground the board in the repo)
 
+> **Dropped (2026-10-18).** The recorded notes (`board ai seen`, the ok/changed/gone check, `--seen` on gaps) were built, tried, and then removed: keeping them true as the code changes costs more than they give. What stayed is the instruction to read the code first (init, drafting), with no storage. See README, "Reading your code".
+
+
 Status: draft for review. Branch `feat/code-seen`. Builds on the decomposition, discussion-mode and multi-board designs.
 
 ## 1. Why

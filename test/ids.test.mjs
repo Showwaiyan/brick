@@ -54,11 +54,3 @@ test('decorateIds adds the key to bare ids in a result line', () => {
   assert.equal(decorateIds('added LOGIN-p3', 'LOGIN'), 'added LOGIN-p3');
   assert.equal(decorateIds('added p3', null), 'added p3');
 });
-
-test('note ids (s1) parse, sort and gain the key like other ids', () => {
-  assert.deepEqual(parseId('LOGIN-s2'), { key: 'LOGIN', short: 's2' });
-  assert.deepEqual(parseId('s2'), { key: null, short: 's2' });
-  assert.equal(decorateIds('recorded s3', 'LOGIN'), 'recorded LOGIN-s3');
-  assert.equal(decorateIds('added p3', 'LOGIN'), 'added LOGIN-p3');
-  assert.deepEqual(['s10', 's2', 'p1'].sort(compareIds), ['p1', 's2', 's10']);
-});
