@@ -7,7 +7,7 @@ import vm from 'node:vm';
 // canvas.js is a classic browser script: run it in a vm and use its plain functions.
 const ctx = vm.createContext({});
 vm.runInContext(fs.readFileSync(path.resolve('src/canvas.js'), 'utf8'), ctx);
-const { canvasFit, canvasZoom, canvasPan, canvasClamp, canvasScale } = ctx;
+const { canvasFit, canvasZoom, canvasPan, canvasClamp, canvasScale, nodeLabel } = ctx;
 const BOX = { w: 1000, h: 500 };
 
 test('fit: a small diagram is centred and not blown up past 1.2x', () => {
@@ -81,4 +81,11 @@ test('diagramNodeId maps a Mermaid id back to the node id, and showId adds the k
   assert.equal(diagramNodeId(nodes, 'p2'), 'p2');
   assert.equal(showId('LOGIN', 'p1.1'), 'LOGIN-p1.1');
   assert.equal(showId(null, 'p1.1'), 'p1.1');
+});
+
+test('nodeLabel: title lines first, then the tags, blanks left out', () => {
+  const part = (textContent) => ({ textContent });
+  const g = { querySelectorAll: () => [part('Receive query request'), part(''), part('USER-b1'), part('Drafting')], textContent: 'ignored' };
+  assert.equal(nodeLabel(g), 'Receive query request, USER-b1, Drafting');
+  assert.equal(nodeLabel({ querySelectorAll: () => [], textContent: ' Plain  text ' }), 'Plain text');
 });

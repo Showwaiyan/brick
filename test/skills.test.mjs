@@ -123,3 +123,11 @@ test('decompose says how to pick the board, and init explains the key', () => {
   assert.match(init, /\/brick:init <what you want to build>` again/);
   assert.match(readSkill('open').body, /\/brick:open all/);
 });
+
+test('init sets a short title right after the board is created and tells the user', () => {
+  const { body } = readSkill('init');
+  assert.match(body, /board ai project --title/);
+  assert.match(body, /--board <KEY>|--board KEY/);
+  assert.match(body, /tell the user the (short )?(title|label)/i);
+  assert.ok(body.indexOf('--title') < body.indexOf('What do you want to solve'), 'before the open question');
+});

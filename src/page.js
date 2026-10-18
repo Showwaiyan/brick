@@ -50,7 +50,8 @@ function renderHeader() {
     all.href = DATA.overview;
     h.append(all);
   }
-  h.append(el('h1', null, DATA.project.name));
+  h.append(el('h1', null, DATA.project.shown));
+  if (DATA.project.shown !== DATA.project.name) h.append(el('p', 'muted you-said', 'You said: ' + DATA.project.name));
   h.append(el('p', 'meta', (DATA.project.key ? 'Board ' + DATA.project.key + ' \u00b7 ' : '') + 'Last updated ' + when(DATA.generated_at)));
   h.append(el('p', 'counts', c.approved + ' approved · ' + plural(c.open_gaps, 'open gap') + ' · ' + c.drafting + ' drafting' +
     (c.superseded ? ' · ' + c.superseded + ' superseded' : '')));
@@ -70,6 +71,18 @@ function renderHeader() {
   return h;
 }
 
+// The id, state, source and counts of a node as tags (the same facts and classes as the tags in the diagrams).
+function renderTags(n) {
+  var box = el('span', 'tags');
+  function tag(kind, text, extra) { box.append(el('span', 'tag tag-' + kind + (extra ? ' ' + extra : ''), text)); }
+  tag('id', showId(DATA.project.key, n.id));
+  tag('state', STATE_LABEL[n.state] || n.state, 'tag-state-' + n.state);
+  if (n.source === 'ai-draft' && n.state !== 'approved' && n.state !== 'superseded') tag('source', 'AI draft');
+  if (n.active_children) tag('sub', n.active_children + ' sub');
+  if (n.open_gaps) tag('gap', plural(n.open_gaps, 'gap'));
+  return box;
+}
+
 // One node as a card. Only used when a diagram could not be drawn.
 function renderNodeCard(id) {
   var n = DATA.nodes[id];
@@ -77,9 +90,7 @@ function renderNodeCard(id) {
   b.type = 'button';
   b.dataset.key = 'card:' + id;
   b.append(el('span', 'card-title', n.title));
-  b.append(el('span', 'card-state', STATE_LABEL[n.state] + ' \u00b7 ' + showId(DATA.project.key, id)));
-  if (n.active_children) b.append(el('span', 'card-sub', plural(n.active_children, 'sub-problem')));
-  if (n.open_gaps) b.append(el('span', 'card-sub', plural(n.open_gaps, 'open gap')));
+  b.append(renderTags(n));
   b.addEventListener('click', function () { go({ node: id }); });
   return b;
 }
@@ -133,12 +144,12 @@ function renderNodePage(id) {
   back.type = 'button';
   back.dataset.key = 'back';
   back.addEventListener('click', function () { go({ node: null }); });
-  bar.append(back, el('span', 'muted', DATA.project.name));
+  bar.append(back, el('span', 'muted', DATA.project.shown));
   page.append(bar);
 
   page.append(el('h1', null, n.title));
-  var line = el('p', 'muted', showId(DATA.project.key, n.id) + ' \u00b7 ' + n.kind + ' \u00b7 ');
-  line.append(el('span', 'badge state-' + n.state, STATE_LABEL[n.state]));
+  var line = el('p', 'muted');
+  line.append(renderTags(n), document.createTextNode(' \u00b7 ' + n.kind));
   if (n.parent) { line.append(document.createTextNode(' \u00b7 part of ')); line.append(link(n.parent)); }
   page.append(line);
 

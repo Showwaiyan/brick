@@ -25,7 +25,8 @@ AI commands (the only writes the AI may run; each needs the user's own words):
   ${T} ai add box|problem --title "<t>" --user-said "<quote>" [--drafted] [--parent <id>] [--after <id>] [--desc ..] [--input ..] [--output ..] [--check ..] [--limits ..]
   ${T} ai edit <id> --user-said "<quote>" [--drafted] [--title ..] [--desc ..] [--input ..] [--output ..] [--check ..] [--limits ..]
       (--drafted: only when the user asked you to write it for them; the quote is their request)
-  ${T} ai project --user-said "<quote>" [--input ..] [--output ..]
+  ${T} ai project [--title "<short title>"] [--user-said "<quote>" --input .. --output ..]
+      (--title: a label of 1 to 40 characters for the board; it needs no quote)
   ${T} ai gap <nodeId> --missing "<what is missing>" [--kind edge-case|architecture|assumption|order|other] [--where "<location>"]
 
 Several boards: ids carry the board key (LOGIN-p3.1). Add --board KEY after any command, or use a full id.

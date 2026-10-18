@@ -5,6 +5,7 @@ import { execute } from '../src/commands.mjs';
 import { load } from '../src/store.mjs';
 import { pageData } from '../src/render.mjs';
 import { boardMermaid, nodeMermaid } from '../src/flow.mjs';
+import { tagsFor } from '../src/tags.mjs';
 import { checkBash } from '../src/guard.mjs';
 
 const ask = 'break down check password for me';
@@ -62,10 +63,11 @@ test('ls, show, the page data and the diagrams mark an AI draft until it is appr
   assert.match(execute(dir, ['show', 'b1']), /source: ai-draft/);
   const pd = pageData(load(dir), 'now');
   assert.equal(pd.nodes.b1.source, 'ai-draft');
-  assert.match(boardMermaid(pd), /Drafting · b1 · AI draft/);
+  assert.match(boardMermaid(pd, 'plain'), /Drafting · b1 · AI draft/);
+  assert.ok(tagsFor(pd, 'b1').some((t) => t.text === 'AI draft'));
   assert.match(pd.nodes.b1.history[0].summary, /draft/);
   execute(dir, ['approve', 'b1']);
-  assert.ok(!/AI draft/.test(boardMermaid(pageData(load(dir), 'now'))));
+  assert.ok(!tagsFor(pageData(load(dir), 'now'), 'b1').some((t) => t.text === 'AI draft'));
 });
 
 test('children drafted on request show the marker in the node flow too', async () => {
@@ -73,7 +75,10 @@ test('children drafted on request show the marker in the node flow too', async (
   execute(dir, ['add', 'box', 'Check password']);
   execute(dir, ['ai', 'add', 'problem', '--title', 'Hash', '--parent', 'b1', '--drafted', '--user-said', ask]);
   execute(dir, ['ai', 'add', 'problem', '--title', 'Rate limit', '--parent', 'b1', '--user-said', 'and rate limiting']);
-  const text = nodeMermaid(pageData(load(dir), 'now'), 'b1');
+  const page = pageData(load(dir), 'now');
+  assert.ok(tagsFor(page, 'p1').some((t) => t.text === 'AI draft'));
+  assert.ok(!tagsFor(page, 'p2').some((t) => t.text === 'AI draft'));
+  const text = nodeMermaid(page, 'b1', 'plain');
   assert.match(text, /p1\["Hash<br\/>Drafting · p1 · AI draft"\]/);
   assert.match(text, /p2\["Rate limit<br\/>Drafting · p2"\]/);
 });

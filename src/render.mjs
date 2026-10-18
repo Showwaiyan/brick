@@ -8,6 +8,7 @@ import { eventsFor } from './text.mjs';
 import { addDiagrams } from './flow.mjs';
 import { compareIds } from './ids.mjs';
 import { renderOverview } from './overview.mjs';
+import { shownTitle } from './title.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
@@ -38,7 +39,7 @@ export function pageData(data, now, opts = {}) {
   }
   const states = Object.values(nodes).map((n) => n.state);
   return {
-    project: data.project, generated_at: now, tool: TOOL_NAME, overview: opts.overview || null,
+    project: { ...data.project, shown: shownTitle(data.project) }, generated_at: now, tool: TOOL_NAME, overview: opts.overview || null,
     roots: children(data, null).map((n) => n.id), nodes,
     counts: {
       approved: states.filter((s) => s === 'approved').length,
@@ -73,7 +74,7 @@ export function renderHtml(data, now = new Date().toISOString(), opts = {}) {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${escapeHtml(data.project.name)} - ${TOOL_NAME}</title>
+<title>${escapeHtml(shownTitle(data.project))} - ${TOOL_NAME}</title>
 <style>
 ${css}</style>
 </head>
