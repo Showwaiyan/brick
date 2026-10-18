@@ -27,7 +27,9 @@ AI commands (the only writes the AI may run; each needs the user's own words):
       (--drafted: only when the user asked you to write it for them; the quote is their request)
   ${T} ai project [--title "<short title>"] [--user-said "<quote>" --input .. --output ..]
       (--title: a label of 1 to 40 characters for the board; it needs no quote)
-  ${T} ai gap <nodeId> --missing "<what is missing>" [--kind edge-case|architecture|assumption|order|other] [--where "<location>"]
+  ${T} ai gap <nodeId> --missing "<what is missing>" [--kind edge-case|architecture|assumption|order|other] [--where "<location>"] [--seen <noteId>]
+  ${T} ai seen --path <file or folder> --note "<what is there>" [--node <id>] [--line N] [--replaces <noteId>]
+      (records what you read in the repo; needs no quote; the path must exist inside the project)
 
 Several boards: ids carry the board key (LOGIN-p3.1). Add --board KEY after any command, or use a full id.
 Read-only (human or AI):
