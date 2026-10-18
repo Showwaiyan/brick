@@ -2,9 +2,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { load, TOOL_NAME, PLUGIN_NAME } from './store.mjs';
-import { children, activeChildren, displayState, openGaps, nextCommands } from './model.mjs';
+import { load, TOOL_NAME } from './store.mjs';
+import { children, activeChildren, displayState, openGaps } from './model.mjs';
 import { eventsFor } from './text.mjs';
+import { addDiagrams } from './flow.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
@@ -29,12 +30,8 @@ export function pageData(data, now) {
       children: children(data, n.id).map((c) => c.id),
       active_children: activeChildren(data, n.id).length,
       open_gaps: openGaps(data, n.id).length,
-      gaps: gaps.map((g) => ({
-        id: g.id, missing: g.missing, where: g.where, status: g.status, note: g.note,
-        commands: [`/${PLUGIN_NAME}:resolve ${g.id} <note>`, `/${PLUGIN_NAME}:dismiss ${g.id} <why>`],
-      })),
+      gaps: gaps.map((g) => ({ id: g.id, missing: g.missing, where: g.where, status: g.status, note: g.note })),
       history: eventsFor(data, n.id).slice(0, 10).map((e) => ({ seq: e.seq, at: e.at, actor: e.actor, action: e.action, summary: summary(e) })),
-      next_commands: nextCommands(data, n.id),
     };
   }
   const states = Object.values(nodes).map((n) => n.state);
@@ -68,7 +65,7 @@ const escapeHtml = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
 // The whole page as one string.
 export function renderHtml(data, now = new Date().toISOString()) {
   const css = fs.readFileSync(path.join(HERE, 'page.css'), 'utf8');
-  const js = fs.readFileSync(path.join(HERE, 'page.js'), 'utf8');
+  const js = ['canvas.js', 'page.js'].map((f) => fs.readFileSync(path.join(HERE, f), 'utf8')).join('\n');
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -81,7 +78,7 @@ ${css}</style>
 <body>
 <div id="app"></div>
 <noscript><p>This page needs JavaScript to draw the board. Run "${TOOL_NAME} ls" for a text view.</p></noscript>
-<script id="data" type="application/json">${safeJson(pageData(data, now))}</script>
+<script id="data" type="application/json">${safeJson(addDiagrams(pageData(data, now)))}</script>
 <script>
 ${js}</script>
 </body>

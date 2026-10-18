@@ -108,3 +108,12 @@ export function drawSvg(text) {
     return null;
   }
 }
+
+// Adds the drawn diagrams to the page data: board_svg, tree_svg and flow_svg on each node that has sub-steps.
+// A diagram that cannot be drawn is null, and the page then shows a plain list instead.
+export function addDiagrams(pd) {
+  pd.board_svg = drawSvg(boardMermaid(pd));
+  pd.tree_svg = drawSvg(treeMermaid(pd));
+  for (const id of Object.keys(pd.nodes)) pd.nodes[id].flow_svg = drawSvg(nodeMermaid(pd, id));
+  return pd;
+}
