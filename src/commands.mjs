@@ -104,8 +104,18 @@ function setProject(data, values, actor, now, said) {
   for (const k of ['input', 'output']) {
     if (values[k] !== undefined) { data.project[k] = clean(values[k]); changed.push(k); }
   }
-  if (!changed.length) throw new Error('Nothing to change. Give at least one of --name --input --output.');
-  addEvent(data, actor, 'project', null, said ? { fields: changed, said } : { fields: changed }, now);
+  const titled = values.title !== undefined;
+  if (!changed.length && !titled) throw new Error('Nothing to change. Give at least one of --name --input --output --title.');
+  if (changed.length) addEvent(data, actor, 'project', null, said ? { fields: changed, said } : { fields: changed }, now);
+  if (titled) {
+    const t = String(values.title).trim();
+    if (!t) throw new Error('The title cannot be empty.');
+    if (/[\r\n]/.test(t)) throw new Error('The title must be one line.');
+    if (t.length > 40) throw new Error('The title is limited to 40 characters.');
+    addEvent(data, actor, 'title', null, { title: t, previous: data.project.title ?? null }, now);
+    data.project.title = t;
+    changed.push('title');
+  }
   return `updated project (${changed.join(', ')})`;
 }
 
@@ -178,9 +188,10 @@ const AI = {
     return editNode(data, positionals[0], { title: values.title, desc: values.desc, contract: contractOf(values), said, drafted: values.drafted }, 'ai', now);
   },
   project(data, argv, now) {
-    const { values } = parse(argv, { 'user-said': SAID['user-said'], input: { type: 'string' }, output: { type: 'string' } },
-      'ai project --user-said "<quote>" [--input ..] [--output ..]', 0);
-    return setProject(data, values, 'ai', now, quoteOf(values));
+    const { values } = parse(argv, { 'user-said': SAID['user-said'], input: { type: 'string' }, output: { type: 'string' }, title: { type: 'string' } },
+      'ai project [--title "<short title>"] [--user-said "<quote>" --input .. --output ..]', 0);
+    const onlyTitle = values.title !== undefined && values.input === undefined && values.output === undefined;
+    return setProject(data, values, 'ai', now, onlyTitle ? null : quoteOf(values));
   },
   gap(data, argv, now) {
     const { values, positionals } = parse(argv, { missing: { type: 'string' }, where: { type: 'string' }, kind: { type: 'string' } },

@@ -93,8 +93,7 @@ function makeCanvas(svgText, opts) {
   Array.prototype.forEach.call(svg.querySelectorAll('.pele-node'), function (g) {
     g.setAttribute('tabindex', '0');
     g.setAttribute('role', 'link');
-    var lines = Array.prototype.map.call(g.querySelectorAll('tspan'), function (t) { return t.textContent; });
-    g.setAttribute('aria-label', (lines.length ? lines.join(', ') : g.textContent || '').replace(/\s+/g, ' ').trim());
+    g.setAttribute('aria-label', nodeLabel(g));
   });
 
   var box = { w: 0, h: 0 }, view = { x: 0, y: 0, w: 1, h: 1 }, touched = false;
@@ -164,6 +163,13 @@ function makeCanvas(svgText, opts) {
   if (typeof ResizeObserver !== 'undefined') new ResizeObserver(layout).observe(wrap);
   requestAnimationFrame(layout);
   return wrap;
+}
+
+// The spoken name of a diagram box: its title lines, then its tags.
+function nodeLabel(g) {
+  var lines = Array.prototype.map.call(g.querySelectorAll('tspan, .tag-text'), function (t) { return String(t.textContent).replace(/\s+/g, ' ').trim(); })
+    .filter(function (t) { return t; });
+  return (lines.length ? lines.join(', ') : String(g.textContent || '')).replace(/\s+/g, ' ').trim();
 }
 
 // A box clicked in a diagram carries the Mermaid id (p1_1); map it back to the node id (p1.1).
