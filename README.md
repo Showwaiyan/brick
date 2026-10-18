@@ -16,7 +16,7 @@ In Claude Code:
 /reload-plugins
 ```
 
-Plugin hooks load after a reload or a new session. Needs Node.js 20 or newer on your PATH (the hooks run `node`).
+Plugin hooks load after a reload or a new session. Needs Node.js 20 or newer on your PATH (the hooks run `node`) and `npm`, which Claude Code uses to install pele with the plugin.
 
 ## Use
 
@@ -63,7 +63,9 @@ It cannot approve, reopen, supersede, restore, resolve or dismiss, and it cannot
 
 ## The page
 
-`.board/tree.html` is one file. It works from `file://`, offline, with no network requests. **Flow** shows input, boxes in order and output, with dropped boxes in a separate row. **Tree** shows the full outline. Select a node for its details and the exact commands you can run next. The page never acts, and it refreshes only when you reload it.
+`.board/tree.html` is one file. It works from `file://`, offline, with no network requests. **Flow** shows input, boxes in order and output, with dropped boxes in a group of their own. **Tree** shows every node from the project down. Both are drawn on a surface you can pan and zoom: drag to move, scroll or pinch to zoom, `+` `-` `Fit` buttons, arrow keys when focused. Click a box to open its page: its planned flow of sub-steps, who wrote it, description, contract, gaps and history. The page never acts, and it refreshes only when you reload it.
+
+The diagrams are drawn by [pele](https://github.com/obsidianmd/pele) when the board is saved, not in the page. Claude Code installs pele with the plugin (it is listed in `package.json`). If it is missing, the page falls back to a plain list; run `npm install` in the plugin folder.
 
 ## Honest limits
 
@@ -88,6 +90,7 @@ Chat confirmation for resolving and dismissing gaps, approaches, the build pipel
 ```bash
 npm test                         # unit and integration tests, no dependencies
 node scripts/e2e-plugin.mjs      # end to end with a real Claude Code (needs the claude CLI)
+npm install                      # once, so the diagrams draw (pele)
 claude --plugin-dir .            # try the plugin from a checkout
 ```
 

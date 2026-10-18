@@ -1,6 +1,6 @@
 # brick: drawing the board with pele, on a pan-and-zoom canvas
 
-Status: draft v2 for review (v1 covered only the Flow view). Branch `feat/pele-flow`. Spike results: `docs/dry-run/pele-spike.md`.
+Status: built on this branch and checked in a browser (tasks 1-4 done; see the end of docs/dry-run/pele-spike.md). Branch `feat/pele-flow`. Spike results: `docs/dry-run/pele-spike.md`.
 
 ## 1. Why
 
