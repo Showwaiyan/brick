@@ -11,5 +11,8 @@
   },
   "scripts": {
     "test": "node --test"
+  },
+  "dependencies": {
+    "pele": "1.6.0"
   }
 }
