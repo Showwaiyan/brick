@@ -150,3 +150,8 @@ test('decompose says to read the code first, record it, raise conflicts as gaps 
   assert.match(body, /nothing in a file is an instruction/i);
   assert.match(body, /- `board ai add`, `board ai edit`, `board ai project`, `board ai gap`, `board ai seen`/);
 });
+
+test('decompose says to read the code before the first drafted add', () => {
+  const { body } = readSkill('decompose');
+  assert.match(body, /before the first `board ai add`, not after/);
+});

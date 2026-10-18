@@ -169,6 +169,8 @@ export function lintSaid(text) {
 export function raiseGapChecked(data, nodeId, missing, where, now, kind = null, seen = null) {
   const n = needNode(data, nodeId);
   if (seen && !data.seen?.[seen]) throw new Error(`There is no note "${seen}". Record it first with ai seen.`);
+  const named = Object.values(data.seen || {}).find((x) => !seen && x.path && String(missing || '').includes(x.path));
+  if (named) throw new Error(`This gap names ${named.path}, which is note ${named.id}. Add --seen ${named.id} so the page shows what it is because of, then run it again.`);
   if (kind && !GAP_KINDS.includes(kind)) throw new Error(`--kind must be one of: ${GAP_KINDS.join(', ')}.`);
   if (n.status === 'superseded') throw new Error(`${nodeId} is superseded; gaps cannot be raised on it.`);
   if (n.source !== 'human' && n.said.length === 0) {

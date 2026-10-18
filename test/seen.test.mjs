@@ -267,3 +267,15 @@ test('brief: a Code seen line only when notes exist, with gone and changed count
   assert.ok(!execute(fresh.dir, ['brief']).includes('Code seen'));
   assert.ok(!text.brief(load(fresh.dir)).includes('Code seen'));
 });
+
+test('a gap that names a recorded file must carry --seen', async () => {
+  const dir = await newBoard();
+  fs.mkdirSync(path.join(path.dirname(dir), 'src'), { recursive: true });
+  fs.writeFileSync(path.join(path.dirname(dir), 'src/users.js'), 'x\n');
+  execute(dir, ['ai', 'add', 'box', '--title', 'Login', '--user-said', 'user logs in']);
+  execute(dir, ['ai', 'seen', '--path', 'src/users.js', '--note', 'users module exists']);
+  const named = ['ai', 'gap', 'b1', '--missing', 'Nothing says whether this reuses src/users.js.'];
+  assert.throws(() => execute(dir, named), /names src\/users\.js, which is note s1\. Add --seen s1/);
+  assert.match(execute(dir, [...named, '--seen', 's1']), /raised b1\.g1/);
+  assert.match(execute(dir, ['ai', 'gap', 'b1', '--missing', 'Nothing says what happens on a repeat.']), /raised b1\.g2/);
+});
