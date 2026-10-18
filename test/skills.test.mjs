@@ -19,8 +19,8 @@ function readSkill(name) {
   return { front, body: m[2] };
 }
 
-test('the skills folder has exactly the eight stubs and decompose', () => {
-  assert.deepEqual(fs.readdirSync(ROOT).sort(), [...STUBS, 'decompose'].sort());
+test('the skills folder has exactly the eight stubs, decompose and discuss', () => {
+  assert.deepEqual(fs.readdirSync(ROOT).sort(), [...STUBS, 'decompose', 'discuss'].sort());
 });
 
 test('every stub is human-only and tells the AI to report the hook line', () => {
@@ -56,4 +56,33 @@ test('decompose is model-invocable and names the slash commands', () => {
 
 test('the old templates folder is gone', () => {
   assert.equal(fs.existsSync(path.resolve('templates')), false);
+});
+
+test('discuss is model-invocable, opt-in, and keeps the decision with the user', () => {
+  const { front, body } = readSkill('discuss');
+  assert.equal(front.name, 'discuss');
+  assert.equal(front['disable-model-invocation'], undefined);
+  assert.ok(front.description.length < 1000);
+  assert.match(front.description, /opt-in/i);
+  assert.match(body, /Ask once per point/);
+  assert.match(body, /Do you want my suggestions/);
+  assert.match(body, /In your own words/);
+  assert.match(body, /Never slip an idea into the question/);
+  assert.match(body, /two or three options/i);
+  assert.match(body, /never how to fill it/);
+  assert.ok(!/\bboard (approve|reopen|supersede|restore|resolve|dismiss|init)\b/.test(body));
+});
+
+test('decompose and init point at discuss; init asks one open question', () => {
+  assert.match(readSkill('decompose').body, /discuss skill/);
+  assert.match(readSkill('decompose').body, /board open/);
+  const init = readSkill('init').body;
+  assert.match(init, /discuss skill/);
+  assert.match(init, /What do you want to solve, and how do you want to go about it\?/);
+});
+
+test('no decision command can be run by the model', () => {
+  for (const name of ['init', 'approve', 'reopen', 'supersede', 'restore', 'resolve', 'dismiss']) {
+    assert.equal(readSkill(name).front['disable-model-invocation'], 'true', name);
+  }
 });

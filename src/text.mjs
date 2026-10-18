@@ -118,5 +118,6 @@ export function brief(data) {
     `Open gaps: ${open.length}${open.length ? ` (${open.map((g) => `${g.id} on ${g.node}`).join(', ')})` : ''}`,
     `Next: ${nextStep(data)}`,
     `Tree: ${T} ls`,
+    'Discussion: only when the user asks, or says yes to your one offer.',
   ].join('\n');
 }

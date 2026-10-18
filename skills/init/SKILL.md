@@ -10,4 +10,4 @@ If that line starts with `[brick] NEEDS:`, nothing was changed and the user left
 
 If there is no `[brick]` line, say the hook did not run, and stop. Do not run any command yourself.
 
-After a successful `[brick] created` line, carry on as the decompose skill says: ask the user, in their own words, what goes in and what comes out. Record nothing until they answer.
+After a successful `[brick] created` line, carry on as the decompose skill says. Ask one open question: "What do you want to solve, and how do you want to go about it? Anything you are unsure about or already worried about is welcome too." Let the user answer in their own words. Record what they say (with `board ai project` and `board ai add`, using their words); do not draft anything for them. If they say they are unsure or ask for ideas, follow the discuss skill. Record nothing until they have answered.
