@@ -19,8 +19,8 @@ function readSkill(name) {
   return { front, body: m[2] };
 }
 
-test('the skills folder has exactly the eight stubs, decompose and discuss', () => {
-  assert.deepEqual(fs.readdirSync(ROOT).sort(), [...STUBS, 'decompose', 'discuss'].sort());
+test('the skills folder has exactly the eight stubs, decompose, discuss and sizing', () => {
+  assert.deepEqual(fs.readdirSync(ROOT).sort(), [...STUBS, 'decompose', 'discuss', 'sizing'].sort());
 });
 
 test('every stub is human-only and tells the AI to report the hook line', () => {
@@ -85,4 +85,29 @@ test('no decision command can be run by the model', () => {
   for (const name of ['init', 'approve', 'reopen', 'supersede', 'restore', 'resolve', 'dismiss']) {
     assert.equal(readSkill(name).front['disable-model-invocation'], 'true', name);
   }
+});
+
+test('sizing is model-invocable, runs board check, and states observations in both directions', () => {
+  const { front, body } = readSkill('sizing');
+  assert.equal(front.name, 'sizing');
+  assert.equal(front['disable-model-invocation'], undefined);
+  assert.ok(front.description.length < 1000);
+  assert.match(body, /board check <id>/);
+  assert.match(body, /can stay whole/);
+  assert.match(body, /could be split/);
+  assert.match(body, /Your call/);
+  assert.match(body, /Never\nSay ready, approved, complete, done, or looks good/);
+  assert.match(body, /about 3 to 9 boxes/);
+  assert.ok(!/\bboard (approve|reopen|supersede|restore|resolve|dismiss|init)\b/.test(body));
+});
+
+test('decompose explains drafting on request and the gap sweep with kinds', () => {
+  const { body } = readSkill('decompose');
+  assert.match(body, /## Drafting on request/);
+  assert.match(body, /--drafted --user-said/);
+  assert.match(body, /Do not go deeper unless they ask again/);
+  assert.match(body, /Want me to look for gaps in this draft\?/);
+  assert.match(body, /--kind edge-case\|architecture\|assumption\|order\|other/);
+  assert.match(body, /edge-case/);
+  assert.match(body, /sizing skill/);
 });

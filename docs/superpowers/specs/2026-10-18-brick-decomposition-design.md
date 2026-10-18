@@ -46,7 +46,7 @@ When the user asks what is missing, how robust something is, or for "gaps", the 
 
 It reports what it found grouped by kind, and when it finds nothing says exactly: "I found no gaps in this." It does not praise the plan.
 
-**Code.** `board ai gap` gets an optional `--kind edge-case|architecture|assumption|order|other` (default `other`), stored on the gap and shown on the page as a small label. The existing lint that rejects fix-sounding text stays. Old gaps have no kind and show none.
+**Code.** `board ai gap` gets an optional `--kind edge-case|architecture|assumption|order|other` (optional; a gap without one shows none), stored on the gap and shown on the page as a small label. The existing lint that rejects fix-sounding text stays. Old gaps have no kind and show none.
 
 ## 5. When is a breakdown enough? (criteria)
 

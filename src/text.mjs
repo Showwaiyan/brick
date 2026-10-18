@@ -25,7 +25,7 @@ AI commands (the only writes the AI may run; each needs the user's own words):
   ${T} ai edit <id> --user-said "<quote>" [--drafted] [--title ..] [--desc ..] [--input ..] [--output ..] [--check ..] [--limits ..]
       (--drafted: only when the user asked you to write it for them; the quote is their request)
   ${T} ai project --user-said "<quote>" [--input ..] [--output ..]
-  ${T} ai gap <nodeId> --missing "<what is missing>" [--where "<location>"]
+  ${T} ai gap <nodeId> --missing "<what is missing>" [--kind edge-case|architecture|assumption|order|other] [--where "<location>"]
 
 Read-only (human or AI):
   ${T} ls | ${T} show <id> | ${T} log [--last N] | ${T} brief | ${T} help
@@ -82,7 +82,7 @@ export function show(data, id) {
   const gaps = Object.values(data.gaps).filter((g) => g.node === id);
   if (gaps.length) {
     out.push('gaps:');
-    for (const g of gaps) out.push(`  ${g.id} [${g.status}] ${g.missing}${g.where ? ` (${g.where})` : ''}${g.note ? ` - ${g.note}` : ''}`);
+    for (const g of gaps) out.push(`  ${g.id} [${g.status}] ${g.kind ? `(${g.kind}) ` : ''}${g.missing}${g.where ? ` (${g.where})` : ''}${g.note ? ` - ${g.note}` : ''}`);
   }
   if (n.superseded) {
     const s = n.superseded;
@@ -124,5 +124,7 @@ export function brief(data) {
     'Discussion rules: never volunteer ideas, options, designs or recommendations. Ask questions and record what the user says.',
     'If the user says they are unsure or do not know, about the same point twice, ask once: "You sound unsure about <point>. Do you want my suggestions on it, or would you rather think it through yourself first?" Then stop and wait. After a no, you may offer once more if they are unsure about it again; after a second no, never offer on that point again unless they ask. In between, keep asking plain questions.',
     'Give ideas or comparisons only when the user asks for them or says yes to that offer, and load the brick:discuss skill with the Skill tool first.',
+    'Draft nodes (board ai add --drafted) only when the user explicitly asks you to write the breakdown for them, one level at a time. When asked for gaps, sweep for gaps, edge cases and architecture issues (see the decompose skill).',
+    'When the user has finished describing a node, or asks whether to split further, run `board check <id>`, load the brick:sizing skill, and state what the checks show as an observation.',
   ].join('\n');
 }

@@ -30,7 +30,7 @@ export function pageData(data, now) {
       children: children(data, n.id).map((c) => c.id),
       active_children: activeChildren(data, n.id).length,
       open_gaps: openGaps(data, n.id).length,
-      gaps: gaps.map((g) => ({ id: g.id, missing: g.missing, where: g.where, status: g.status, note: g.note })),
+      gaps: gaps.map((g) => ({ id: g.id, missing: g.missing, where: g.where, status: g.status, note: g.note, kind: g.kind || null })),
       history: eventsFor(data, n.id).slice(0, 10).map((e) => ({ seq: e.seq, at: e.at, actor: e.actor, action: e.action, summary: summary(e) })),
     };
   }

@@ -180,9 +180,9 @@ const AI = {
     return setProject(data, values, 'ai', now, quoteOf(values));
   },
   gap(data, argv, now) {
-    const { values, positionals } = parse(argv, { missing: { type: 'string' }, where: { type: 'string' } },
-      'ai gap <nodeId> --missing "<what is missing>" [--where "<location>"]', 1);
-    return `raised ${raiseGapChecked(data, positionals[0], values.missing, values.where, now)} on ${positionals[0]}`;
+    const { values, positionals } = parse(argv, { missing: { type: 'string' }, where: { type: 'string' }, kind: { type: 'string' } },
+      'ai gap <nodeId> --missing "<what is missing>" [--kind edge-case|architecture|assumption|order|other] [--where "<location>"]', 1);
+    return `raised ${raiseGapChecked(data, positionals[0], values.missing, values.where, now, values.kind)} on ${positionals[0]}`;
   },
 };
 
