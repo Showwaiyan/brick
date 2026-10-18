@@ -199,6 +199,10 @@ export function addEvent(data, actor, action, target, detail = {}, now = new Dat
 export function validate(data) {
   const errs = [];
   if (!data || data.version !== 1) throw new Error('tree.json: unsupported or missing version');
+  const title = data.project?.title;
+  if (title !== undefined && (typeof title !== 'string' || title.length < 1 || title.length > 40 || /[\r\n]/.test(title))) {
+    errs.push('project title must be one line of 1 to 40 characters');
+  }
   const nodes = data.nodes || {};
   const siblings = new Map();
   for (const [key, n] of Object.entries(nodes)) {

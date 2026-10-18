@@ -1,6 +1,7 @@
 // Which board does a command mean? Fixed rules, no guessing by topic (that is the AI's job, and never for decisions).
 import { listBoards, activeKey, load, PLUGIN_NAME } from './store.mjs';
 import { displayState, openGaps } from './model.mjs';
+import { shownTitle } from './title.mjs';
 
 const FULL_ID = /^([A-Za-z][A-Za-z0-9]{1,5})-([bp]\d+(?:\.\d+)*(?:\.g\d+)?|g\d+)$/i;
 const KEYED_IN_TEXT = /(?<![\w-])([A-Za-z][A-Za-z0-9]{1,5})-(?=[bpg]\d)/g;
@@ -13,9 +14,9 @@ export function boardSummary({ key, dir }) {
     const counts = { approved: 0, drafting: 0, has_gaps: 0, superseded: 0 };
     for (const id of Object.keys(data.nodes)) counts[displayState(data, id)] += 1;
     const gaps = Object.keys(data.nodes).reduce((n, id) => n + openGaps(data, id).length, 0);
-    return { key, name: data.project.name, counts, open_gaps: gaps, broken: null };
+    return { key, name: data.project.name, shown: shownTitle(data.project), counts, open_gaps: gaps, broken: null };
   } catch (e) {
-    return { key, name: null, counts: null, open_gaps: 0, broken: e.message.split('\n')[0] };
+    return { key, name: null, shown: null, counts: null, open_gaps: 0, broken: e.message.split('\n')[0] };
   }
 }
 
