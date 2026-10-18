@@ -76,3 +76,15 @@ test('the page data and the tab title use the shown title', async () => {
   execute(dir, ['ai', 'project', '--title', 'A & B']);
   assert.match(renderHtml(load(dir)), /<title>A &amp; B - /);
 });
+
+test('a hostile title cannot put markup in the page or the diagrams', async () => {
+  const evil = '</script><img src=x onerror=alert(1)>';
+  const dir = await newBoard(evil);
+  execute(dir, ['add', 'box', evil]);
+  execute(dir, ['ai', 'project', '--title', evil.slice(0, 40)]);
+  const html = renderHtml(load(dir));
+  assert.equal(html.split('</script').length - 1, 2, 'only our own two closing tags');
+  assert.ok(!html.includes('<img'));
+  const page = pageData(load(dir), 'now');
+  assert.equal(page.project.shown, evil.slice(0, 40));
+});
