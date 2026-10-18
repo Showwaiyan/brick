@@ -89,3 +89,19 @@ test('render and open commands; open never throws', async () => {
   assert.equal(openFile('/x', () => ({ error: new Error('no') })), false);
   assert.equal(openFile('/x', () => { throw new Error('boom'); }), false);
 });
+
+test('without pele installed the page still renders, with a plain list instead of diagrams', () => {
+  const copy = tmp();
+  fs.cpSync(path.resolve('src'), path.join(copy, 'src'), { recursive: true });
+  fs.cpSync(path.resolve('bin'), path.join(copy, 'bin'), { recursive: true });
+  fs.writeFileSync(path.join(copy, 'package.json'), '{"type":"module"}');
+  const work = path.join(tmp(), 'w');
+  fs.mkdirSync(work);
+  const r = spawnSync('node', [path.join(copy, 'bin/board.mjs'), 'init', 'No pele', '--demo'], { cwd: work, encoding: 'utf8' });
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(r.stderr, '', 'no warnings');
+  const html = fs.readFileSync(path.join(work, '.board/tree.html'), 'utf8');
+  assert.match(html, /"board_svg":null/);
+  assert.match(html, /"tree_svg":null/);
+  assert.match(fs.readFileSync(path.resolve('src/page.js'), 'utf8'), /could not be drawn/);
+});

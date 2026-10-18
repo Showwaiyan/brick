@@ -93,7 +93,8 @@ function makeCanvas(svgText, opts) {
   Array.prototype.forEach.call(svg.querySelectorAll('.pele-node'), function (g) {
     g.setAttribute('tabindex', '0');
     g.setAttribute('role', 'link');
-    g.setAttribute('aria-label', (g.textContent || '').replace(/\s+/g, ' ').trim());
+    var lines = Array.prototype.map.call(g.querySelectorAll('tspan'), function (t) { return t.textContent; });
+    g.setAttribute('aria-label', (lines.length ? lines.join(', ') : g.textContent || '').replace(/\s+/g, ' ').trim());
   });
 
   var box = { w: 0, h: 0 }, view = { x: 0, y: 0, w: 1, h: 1 }, touched = false;
