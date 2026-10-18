@@ -118,6 +118,6 @@ export function brief(data) {
     `Open gaps: ${open.length}${open.length ? ` (${open.map((g) => `${g.id} on ${g.node}`).join(', ')})` : ''}`,
     `Next: ${nextStep(data)}`,
     `Tree: ${T} ls`,
-    'Discussion: only when the user asks, or says yes to your one offer.',
+    'Discussion: only when the user asks, or says yes to your one offer. Before you answer any request for ideas, a comparison, a recommendation or advice, or when the user seems stuck, load the brick:discuss skill with the Skill tool and follow it.',
   ].join('\n');
 }

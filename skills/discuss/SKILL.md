@@ -1,6 +1,6 @@
 ---
 name: discuss
-description: Use when the user asks for suggestions, ideas, a comparison of tools or approaches, alternatives, or advice about what they are planning; when they say they are unsure or do not know how to explain or solve something; or when they seem stuck. Discussion is opt-in: help only when asked, or after the user says yes to your offer.
+description: Load this before answering when the user asks for suggestions, ideas, a recommendation, a comparison of tools or approaches, alternatives, or advice about something they are planning or building; when they say they are unsure or do not know how to explain or solve something; or when they seem stuck. It sets how to help without deciding for them. Discussion is opt-in: help only when asked, or after the user says yes to your offer.
 ---
 
 # Talking it over
