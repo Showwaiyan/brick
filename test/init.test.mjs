@@ -15,7 +15,7 @@ test('.gitignore gets the .board/ line once and keeps what was there', () => {
   const r = board(dir, 'init', 'X');
   assert.equal(r.status, 0, r.stderr);
   assert.equal(read(dir, '.gitignore'), 'node_modules\n.board/\n');
-  assert.equal(board(dir, 'init', 'X').status, 1);
+  assert.equal(board(dir, 'init', 'X').status, 0, 'a second board is allowed');
   assert.equal(read(dir, '.gitignore'), 'node_modules\n.board/\n');
   const fresh = tmp();
   board(fresh, 'init', 'X');
@@ -24,19 +24,28 @@ test('.gitignore gets the .board/ line once and keeps what was there', () => {
 
 test('init creates the board and config, and nothing under .claude/', () => {
   const dir = tmp();
-  const r = board(dir, 'init', 'X', '--input', 'a');
-  assert.match(r.stdout, /created .*\.board/);
+  const r = board(dir, 'init', 'Xyz', '--input', 'a');
+  assert.match(r.stdout, /created board XYZ .*\.board/);
+  assert.match(r.stdout, /XYZ-b1/);
   assert.match(r.stdout, /not back it up/);
-  assert.ok(fs.existsSync(path.join(dir, '.board/tree.json')));
-  assert.ok(fs.existsSync(path.join(dir, '.board/tree.html')));
+  assert.ok(fs.existsSync(path.join(dir, '.board/boards/XYZ/tree.json')));
+  assert.ok(fs.existsSync(path.join(dir, '.board/boards/XYZ/tree.html')));
+  assert.equal(read(dir, '.board/active').trim(), 'XYZ');
   assert.deepEqual(JSON.parse(read(dir, '.board/config.json')), { openBrowserOnSessionStart: true });
   assert.equal(fs.existsSync(path.join(dir, '.claude')), false);
 });
 
-test('a second init says the board already exists', () => {
+test('a second init makes a second board and makes it active; a taken --key is refused', () => {
   const dir = tmp();
-  board(dir, 'init', 'X');
-  assert.match(board(dir, 'init', 'Y').stderr, /already exists/);
+  board(dir, 'init', 'Login');
+  const r = board(dir, 'init', 'Export report');
+  assert.equal(r.status, 0, r.stderr);
+  assert.ok(fs.existsSync(path.join(dir, '.board/boards/EXPORT/tree.json')));
+  assert.equal(read(dir, '.board/active').trim(), 'EXPORT');
+  assert.match(board(dir, 'init', 'Other', '--key', 'LOGIN').stderr, /already exists/);
+  assert.match(board(dir, 'init', 'Other', '--key', 'bad key').stderr, /not a board key/);
+  assert.equal(board(dir, 'init', 'Other', '--key', 'oth').status, 0, 'keys are upper-cased');
+  assert.ok(fs.existsSync(path.join(dir, '.board/boards/OTH/tree.json')));
 });
 
 test('init refuses in a linked worktree', () => {

@@ -2,45 +2,45 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { tmp, newBoard, gitRepo, git } from './helpers.mjs';
+import { tmp, newProject, gitRepo, git } from './helpers.mjs';
 import { execute } from '../src/commands.mjs';
 import { load } from '../src/store.mjs';
 import { runSlash } from '../src/slash.mjs';
 
 // A board with boxes b1 One, b2 Two; returns the data folder and the project folder.
 async function setup() {
-  const dir = await newBoard();
+  const { dir, cwd } = await newProject('Proj');
   execute(dir, ['add', 'box', 'One']);
   execute(dir, ['add', 'box', 'Two']);
-  return { dir, cwd: path.dirname(dir) };
+  return { dir, cwd };
 }
 
 test('each command works in plain words', async () => {
   const { dir, cwd } = await setup();
-  assert.equal(runSlash('brick:approve', 'one', cwd), '[brick] approved b1');
+  assert.equal(runSlash('brick:approve', 'one', cwd), '[brick] approved PROJ-b1');
   assert.equal(load(dir).nodes.b1.status, 'approved');
-  assert.equal(runSlash('brick:reopen', 'b1 I changed my mind', cwd), '[brick] reopened b1');
+  assert.equal(runSlash('brick:reopen', 'b1 I changed my mind', cwd), '[brick] reopened PROJ-b1');
   execute(dir, ['ai', 'gap', 'b1', '--missing', 'Nothing defines the thing.']);
   execute(dir, ['ai', 'gap', 'b2', '--missing', 'It is unclear what happens on error.']);
-  assert.match(runSlash('brick:resolve', 'b1.g1 handled in the next step', cwd), /^\[brick\] resolved b1\.g1/);
-  assert.match(runSlash('brick:dismiss', 'two is not a real gap', cwd), /^\[brick\] dismissed b2\.g1/);
-  assert.match(runSlash('brick:supersede', 'b1 replaced by b2, the client dropped it', cwd), /^\[brick\] superseded b1/);
+  assert.match(runSlash('brick:resolve', 'b1.g1 handled in the next step', cwd), /^\[brick\] resolved PROJ-b1\.g1/);
+  assert.match(runSlash('brick:dismiss', 'two is not a real gap', cwd), /^\[brick\] dismissed PROJ-b2\.g1/);
+  assert.match(runSlash('brick:supersede', 'b1 replaced by b2, the client dropped it', cwd), /^\[brick\] superseded PROJ-b1/);
   const d = load(dir);
   assert.equal(d.nodes.b1.superseded.by, 'b2');
   assert.equal(d.nodes.b1.superseded.reason, 'the client dropped it');
   assert.equal(d.gaps['b1.g1'].note, 'handled in the next step');
-  assert.match(runSlash('brick:restore', 'one', cwd), /^\[brick\] restored b1/);
+  assert.match(runSlash('brick:restore', 'one', cwd), /^\[brick\] restored PROJ-b1/);
 });
 
 test('init: the whole text is the project name; no flags needed', () => {
   const cwd = tmp();
   const out = runSlash('brick:init', 'login feature for my app', cwd);
   assert.match(out, /^\[brick\] created/);
-  assert.equal(load(path.join(cwd, '.board')).project.name, 'login feature for my app');
+  assert.equal(load(path.join(cwd, '.board/boards/LOGIN')).project.name, 'login feature for my app');
   const flagLike = tmp();
   runSlash('brick:init', '--demo', flagLike);
-  assert.equal(load(path.join(flagLike, '.board')).project.name, '--demo');
-  assert.equal(Object.keys(load(path.join(flagLike, '.board')).nodes).length, 0, 'no demo data');
+  assert.equal(load(path.join(flagLike, '.board/boards/DEMO')).project.name, '--demo');
+  assert.equal(Object.keys(load(path.join(flagLike, '.board/boards/DEMO')).nodes).length, 0, 'no demo data');
 });
 
 test('init with no words asks for a name and creates nothing', () => {
@@ -60,8 +60,8 @@ test('incomplete input changes nothing and asks', async () => {
   runSlash('brick:approve', 'b1', cwd);
   const before = fs.readFileSync(path.join(dir, 'tree.json'), 'utf8');
   const out = runSlash('brick:reopen', 'b1', cwd);
-  assert.match(out, /^\[brick\] NEEDS: a reason for reopening b1/);
-  assert.match(out, /Complete command: \/brick:reopen b1 <your reason>/);
+  assert.match(out, /^\[brick\] NEEDS: a reason for reopening PROJ-b1/);
+  assert.match(out, /Complete command: \/brick:reopen PROJ-b1 <your reason>/);
   assert.equal(fs.readFileSync(path.join(dir, 'tree.json'), 'utf8'), before);
 });
 
@@ -76,7 +76,7 @@ test('Review Focus: shell syntax in the reason stays literal text', async () => 
   runSlash('brick:approve', 'b1', cwd);
   const mark = path.join(tmp(), 'created-by-shell');
   const why = `$(touch ${mark}) ; \`id\` "quoted" 'single'`;
-  assert.match(runSlash('brick:reopen', `b1 because ${why}`, cwd), /^\[brick\] reopened b1/);
+  assert.match(runSlash('brick:reopen', `b1 because ${why}`, cwd), /^\[brick\] reopened PROJ-b1/);
   assert.equal(fs.existsSync(mark), false);
   assert.equal(load(dir).events.at(-1).detail.why, why);
 });

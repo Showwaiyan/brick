@@ -1,6 +1,8 @@
 // Commands: parse arguments, call the rules, return one short line of text.
 import { parseArgs } from 'node:util';
-import { findProject, load, mutate, newNodeId, addEvent, TOOL_NAME, DATA_DIR, PLUGIN_NAME } from './store.mjs';
+import { findProject, load, mutate, newNodeId, addEvent, listBoards, migrateLegacy, setActive, TOOL_NAME, DATA_DIR, PLUGIN_NAME } from './store.mjs';
+import { decorateIds } from './ids.mjs';
+import { resolveBoard, boardsText } from './boards.mjs';
 import { children } from './model.mjs';
 import { approve, reopen, supersede, restore, closeGap, needNode, nextOrder, blank, raiseGapChecked, lintSaid } from './rules.mjs';
 import { ls, show, log, brief, HELP } from './text.mjs';
@@ -226,14 +228,33 @@ export function execute(dir, argv, now = new Date().toISOString()) {
   throw new Error(`Unknown command "${cmd}". Run: ${T} help`);
 }
 
-// Entry point for the CLI: finds the project and runs the command.
+// Entry point for the CLI: finds the project, picks the board and runs the command.
 export function run(argv, cwd) {
   const [cmd] = argv;
   if (!cmd || cmd === 'help') return HELP;
   if (cmd === 'init') return initProject(cwd, argv.slice(1));
-  if (cmd !== 'ai' && !MUTATING[cmd] && !READING[cmd]) throw new Error(`Unknown command "${cmd}". Run: ${T} help`);
+  if (cmd.startsWith('--board')) throw new Error(`Put --board after the command, for example: ${T} ls --board LOGIN`);
+  const own = ['boards', 'use'].includes(cmd);
+  if (!own && cmd !== 'ai' && !MUTATING[cmd] && !READING[cmd]) throw new Error(`Unknown command "${cmd}". Run: ${T} help`);
   const project = findProject(cwd);
   for (const w of project.warnings) console.error(w);
   if (!project.exists) throw new Error(`No ${DATA_DIR}/ here. Run: ${T} init "<name>"`);
-  return execute(project.dir, argv);
+  migrateLegacy(project.dir);
+  if (cmd === 'boards') return boardsText(project.dir);
+  if (cmd === 'use') return useBoard(project.dir, argv.slice(1));
+  const board = resolveBoard(project.dir, argv);
+  const out = execute(board.dir, board.argv);
+  if (cmd !== 'ai' && !MUTATING[cmd]) return out;
+  if (board.explicit) setActive(project.dir, board.key); // reads leave the pointer alone
+  return decorateIds(out, board.key);
+}
+
+// `board use KEY`: points the active board at KEY.
+function useBoard(dataDir, args) {
+  if (args.length !== 1) throw new Error(`Usage: ${T} use <KEY>`);
+  const key = args[0].toUpperCase();
+  const keys = listBoards(dataDir).map((b) => b.key);
+  if (!keys.includes(key)) throw new Error(`There is no board "${args[0]}". Boards: ${keys.join(', ') || 'none'}.`);
+  setActive(dataDir, key);
+  return `using board ${key}`;
 }

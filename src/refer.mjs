@@ -1,6 +1,7 @@
 // Reads a human's plain-words request ("approve check password", "dismiss g1 not real")
 // and works out what it points at. Fixed rules only: no AI, no shell. Never guesses.
 import { PLUGIN_NAME } from './store.mjs';
+import { fid } from './ids.mjs';
 
 const S = `/${PLUGIN_NAME}:`;
 const NODE_ID = /^["'“‘]?([bp]\d+(?:\.\d+)*)(?![\w])/i;
@@ -60,14 +61,14 @@ function findNode(data, verb, text) {
   const hit = titlePrefix(t, candidates);
   if (hit && hit.nodes.length === 1) return { id: hit.nodes[0].id, rest: hit.rest };
   if (hit) {
-    const ids = hit.nodes.map((n) => n.id);
+    const ids = hit.nodes.map((n) => fid(data, n.id));
     return needs(`which one? Several nodes are titled "${hit.nodes[0].title}": ${ids.join(', ')}.`, [], `${S}${verb} ${ids[0]}`);
   }
   const any = t.match(NODE_ID_ANYWHERE);
   if (any && data.nodes[any[1].toLowerCase()]) {
     return { id: any[1].toLowerCase(), rest: `${t.slice(0, any.index)} ${t.slice(any.index + any[0].length)}` };
   }
-  const list = candidates.slice(0, 12).map((n) => `${n.id} ${n.title}`).join(', ');
+  const list = candidates.slice(0, 12).map((n) => `${fid(data, n.id)} ${n.title}`).join(', ');
   return needs(`which node?${t ? ` I could not match "${t}".` : ''}`, [list ? `Nodes you could use: ${list}` : 'There are no nodes this applies to.'], `${S}${verb} <node id or title>`);
 }
 
@@ -75,7 +76,7 @@ function findNode(data, verb, text) {
 function findGap(data, verb, text) {
   const t = trimLead(text);
   const open = Object.values(data.gaps).filter((g) => g.status === 'open');
-  const describe = (g) => `${g.id} (on ${g.node}): ${g.missing}`;
+  const describe = (g) => `${fid(data, g.id)} (on ${fid(data, g.node)}): ${g.missing}`;
   const lead = t.match(GAP_ID);
   if (lead) {
     const id = lead[1].toLowerCase();
@@ -85,7 +86,7 @@ function findGap(data, verb, text) {
   if (hit && hit.nodes.length === 1) {
     const mine = open.filter((g) => g.node === hit.nodes[0].id);
     if (mine.length === 1) return { id: mine[0].id, rest: hit.rest };
-    if (mine.length > 1) return needs(`which gap? ${hit.nodes[0].title} has ${mine.length} open gaps.`, mine.map(describe), `${S}${verb} ${mine[0].id} <your reason>`);
+    if (mine.length > 1) return needs(`which gap? ${hit.nodes[0].title} has ${mine.length} open gaps.`, mine.map(describe), `${S}${verb} ${fid(data, mine[0].id)} <your reason>`);
     return needs(`which gap? ${hit.nodes[0].title} has no open gaps.`);
   }
   const any = t.match(GAP_ID_ANYWHERE);
@@ -113,8 +114,8 @@ export function parseRequest(data, verb, text) {
     }
   }
   if (!rest) {
-    const what = v.kind === 'gap' ? `${id}` : `${id} (${data.nodes[id].title})`;
-    return needs(`${v.reason} for ${v.ing} ${what}.`, [], `${S}${verb} ${id} <your ${v.reason === 'a note' ? 'note' : 'reason'}>`);
+    const what = v.kind === 'gap' ? fid(data, id) : `${fid(data, id)} (${data.nodes[id].title})`;
+    return needs(`${v.reason} for ${v.ing} ${what}.`, [], `${S}${verb} ${fid(data, id)} <your ${v.reason === 'a note' ? 'note' : 'reason'}>`);
   }
   if (verb === 'resolve') return { argv: ['gap', 'resolve', id, `--note=${rest}`] };
   if (verb === 'dismiss') return { argv: ['gap', 'dismiss', id, `--why=${rest}`] };

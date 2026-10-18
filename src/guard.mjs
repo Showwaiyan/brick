@@ -2,8 +2,8 @@
 // They stop accidents and drift. They are not a security boundary.
 import fs from 'node:fs';
 import path from 'node:path';
-import { findProject, load, TOOL_NAME, DATA_DIR } from './store.mjs';
-import { brief } from './text.mjs';
+import { findProject, load, listBoards, activeKey, migrateLegacy, TOOL_NAME, DATA_DIR } from './store.mjs';
+import { brief, briefNoActive } from './text.mjs';
 import { renderFile } from './render.mjs';
 import { runSlash } from './slash.mjs';
 import { openFile } from './open.mjs';
@@ -13,7 +13,8 @@ const T = TOOL_NAME;
 // Finds `board <word> [<word>]` anywhere in a command line (after a space, ; & | ( ` $ " or ').
 // The tool name is built from TOOL_NAME so a rename keeps the guard in step.
 const CALL = new RegExp(`(^|[\\s;&|(\`$"'])(?:\\S*/)?${T}(?:\\.mjs)?\\s+([A-Za-z-]+)(?:\\s+([A-Za-z-]+))?`, 'g');
-const READ_ONLY = ['ls', 'show', 'log', 'brief', 'render', 'open', 'check', 'help'];
+// `use` only moves the active-board pointer; it changes no board.
+const READ_ONLY = ['ls', 'show', 'log', 'brief', 'render', 'open', 'check', 'help', 'boards', 'use'];
 // Subcommands of ours. A word that is not one of these ("board is", "board layout") is ordinary text.
 const KNOWN = ['approve', 'reopen', 'supersede', 'restore', 'init', 'add', 'edit', 'project', 'gap', 'ai'];
 const AI_ALLOWED = ['add', 'edit', 'gap', 'project'];
@@ -84,14 +85,22 @@ export function sessionStart(cwd, opener = openFile) {
   try {
     const project = findProject(cwd);
     if (!project.exists) return '';
-    const data = load(project.dir);
+    migrateLegacy(project.dir);
+    const boards = listBoards(project.dir).map((b) => ({ ...b, name: boardName(b.dir) }));
+    const active = activeKey(project.dir) || (boards.length === 1 ? boards[0].key : null);
     let config = {};
     try { config = JSON.parse(fs.readFileSync(path.join(project.dir, 'config.json'), 'utf8')); } catch { /* use defaults */ }
-    if (config.openBrowserOnSessionStart) opener(renderFile(project.dir));
-    return brief(data);
+    const shown = boards.find((b) => b.key === active);
+    if (config.openBrowserOnSessionStart && shown) opener(renderFile(shown.dir));
+    return shown ? brief(load(shown.dir), { boards, active }) : briefNoActive({ boards });
   } catch {
     return '';
   }
+}
+
+// A board's name, for the session brief. Never throws.
+function boardName(dir) {
+  try { return load(dir).project.name; } catch { return null; }
 }
 
 // Runs one guard on the hook's stdin text. Returns { code, out, err }; code 2 blocks the tool call.

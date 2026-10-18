@@ -52,6 +52,18 @@ export function sample() {
   };
 }
 
+// A project folder with one board in the multi-board layout. Returns { cwd, data, dir, key }.
+export async function newProject(name = 'Proj') {
+  const { createBoard, emptyData, setActive } = await import('../src/store.mjs');
+  const { deriveKey } = await import('../src/ids.mjs');
+  const cwd = tmp();
+  const data = path.join(cwd, '.board');
+  const key = deriveKey(name);
+  const dir = createBoard(data, emptyData(name, null, null, undefined, key));
+  setActive(data, key);
+  return { cwd, data, dir, key };
+}
+
 // A fresh data folder with an empty board; returns its path.
 export async function newBoard(name = 't') {
   const { create, emptyData } = await import('../src/store.mjs');
