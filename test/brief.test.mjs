@@ -22,9 +22,10 @@ test('with several boards the brief lists them and gives the rules for choosing 
   assert.match(out, /\nBoards: EXPORT, LOGIN \(active\)\n/);
   assert.match(out, /--board <KEY>/);
   assert.match(out, /Using board <KEY>\./);
-  assert.match(out, /never do this for approve, supersede, resolve, dismiss, reopen or restore/);
-  assert.match(out, /ask which board/i);
-  assert.match(out, /active mark is only the default for typed commands/);
+  assert.match(out, /never for approve, supersede, resolve, dismiss, reopen or restore/);
+  assert.match(out, /Which board is this for\? \(<KEYS>\)/);
+  assert.match(out, /means nothing for you; it is only the default for the user's typed commands/);
+  assert.match(out, /^Project: .*\nBoards: .*\nIMPORTANT, several boards/);
 });
 
 test('with several boards and none active the brief asks which board and carries the same rules', () => {

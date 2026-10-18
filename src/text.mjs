@@ -30,7 +30,7 @@ AI commands (the only writes the AI may run; each needs the user's own words):
 
 Several boards: ids carry the board key (LOGIN-p3.1). Add --board KEY after any command, or use a full id.
 Read-only (human or AI):
-  ${T} ls | ${T} show <id> | ${T} log [--last N] | ${T} brief | ${T} help
+  ${T} ls [--all] | ${T} show <id> | ${T} log [--last N] | ${T} brief | ${T} help
   ${T} boards              the boards in this project (* is the active one)
   ${T} use <KEY>           make a board the active one
   ${T} check [id]          signals about size and shape (facts and flags, not a verdict)
@@ -122,7 +122,7 @@ const boardsLine = ({ boards, active }) =>
   `Boards: ${boards.map((b) => `${b.key}${b.key === active ? ' (active)' : ''}`).join(', ')}`;
 
 // How the AI picks a board when there are several. Typed commands follow stricter rules in code.
-const BOARD_RULES = 'Several boards: the active mark is only the default for typed commands. For your own commands pick the board in this order, and put --board <KEY> (or a full id like LOGIN-p3) on every board command. (1) The user names a board or a full id. (2) The user made or opened a board in this chat: keep using it. (3) They name no board, but the feature or problem they talk about matches exactly one board\'s title, nodes or description: use it and say "Using board <KEY>." once; never do this for approve, supersede, resolve, dismiss, reopen or restore, which need the board named. (4) Otherwise, or if two boards fit, ask which board before you record anything. After the user switches to another board, run `board use <KEY>`.';
+const BOARD_RULES = 'IMPORTANT, several boards: record nothing until you know which board. The "(active)" mark means nothing for you; it is only the default for the user\'s typed commands. You know the board only if (1) the user named a board or a full id, (2) the user made or opened a board earlier in THIS chat, or (3) the feature or problem they describe matches exactly one board\'s title, nodes or description (to test this, read every board with `board ls --all`, never only one; if two boards fit, ask; otherwise say "Using board <KEY>." once; never for approve, supersede, resolve, dismiss, reopen or restore, which need the board named). Otherwise your whole reply is one question, "Which board is this for? (<KEYS>)", and you record nothing. Never record on the board just because it is active: a message that names no board and fits no single board gets the question. Once you know, put --board <KEY> on every board command. After the user switches to another board, run `board use <KEY>`.';
 
 // With several boards and none active: the list, what to do, and the rules.
 export function briefNoActive(ctx) {
@@ -141,7 +141,7 @@ export function brief(data, ctx = null) {
   const many = ctx && ctx.boards.length > 1;
   return [
     `Project: ${data.project.name}${data.project.key ? ` (board ${data.project.key})` : ''}`,
-    ...(many ? [boardsLine(ctx)] : []),
+    ...(many ? [boardsLine(ctx), BOARD_RULES] : []),
     `Nodes: ${count.approved} approved, ${count.drafting} drafting, ${count.has_gaps} with gaps, ${count.superseded} superseded`,
     `Open gaps: ${open.length}${open.length ? ` (${open.map((g) => `${fid(data, g.id)} on ${fid(data, g.node)}`).join(', ')})` : ''}`,
     `Next: ${nextStep(data)}`,
@@ -151,6 +151,5 @@ export function brief(data, ctx = null) {
     'Give ideas or comparisons only when the user asks for them or says yes to that offer, and load the brick:discuss skill with the Skill tool first.',
     'When the user asks you to break something down for them or to draft the flow ("break it down for me", "draft the flow"), draft it with board ai add --drafted, one level, and do not ask them questions or for their own breakdown first: draft from the title and what is on the board, and say what you assumed afterwards. Draft only on such a request. When asked for gaps, sweep for gaps, edge cases and architecture issues (see the decompose skill).',
     'When the user has finished describing a node, or asks whether to split further, run `board check <id>`, load the brick:sizing skill, and state what the checks show as an observation.',
-    ...(many ? [BOARD_RULES] : []),
   ].join('\n');
 }

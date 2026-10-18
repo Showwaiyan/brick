@@ -248,7 +248,13 @@ export function run(argv, cwd) {
     const quiet = argv.includes('--quiet');
     return quiet ? '' : opened ? `opened ${file}` : `Could not open a browser. The page is here: ${file}`;
   }
+  if (cmd === 'ls' && argv.includes('--all')) {
+    return listBoards(project.dir).map((b) => execute(b.dir, ['ls'])).join('\n\n');
+  }
   const board = resolveBoard(project.dir, argv.filter((a) => a !== '--all'));
+  if (cmd === 'ai' && !board.explicit && listBoards(project.dir).length > 1) {
+    throw new Error(`Several boards. Name the board on every ${T} ai command: add --board <KEY> (or use a full id). If you do not know which board the user means, ask them before recording anything.`);
+  }
   const out = execute(board.dir, board.argv);
   if (cmd !== 'ai' && !MUTATING[cmd]) return out;
   if (board.explicit) setActive(project.dir, board.key); // reads leave the pointer alone

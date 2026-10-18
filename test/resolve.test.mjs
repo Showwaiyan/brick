@@ -77,8 +77,8 @@ test('a title or quote that merely contains an id is not rewritten', () => {
   const cwd = two();
   run(cwd, 'add', 'box', 'LOGIN-b1 notes', '--board', 'LOGIN');
   assert.equal(load(path.join(cwd, '.board/boards/LOGIN')).nodes.b2.title, 'LOGIN-b1 notes');
-  run(cwd, 'ai', 'edit', 'b1', '--user-said', 'the b1 step runs before p1', '--desc', 'x');
-  const show = run(cwd, 'show', 'b1').stdout;
+  run(cwd, 'ai', 'edit', 'b1', '--user-said', 'the b1 step runs before p1', '--desc', 'x', '--board', 'LOGIN');
+  const show = run(cwd, 'show', 'b1', '--board', 'LOGIN').stdout;
   assert.match(show, /"the b1 step runs before p1"/);
 });
 
@@ -147,4 +147,23 @@ test('session start names the boards; with several and none active it asks', () 
   fs.rmSync(path.join(cwd, '.board/active'));
   const none = sessionStart(cwd, () => true);
   assert.match(none, /^Boards: EXPORT, LOGIN\nNo board is active/);
+});
+
+test('ls --all prints every board, each with its own key on its ids', () => {
+  const cwd = two();
+  const out = run(cwd, 'ls', '--all').stdout;
+  assert.match(out, /Export report \[EXPORT\]\n {2}EXPORT-b1 {2}Write CSV[^\n]*\n\nLogin \[LOGIN\]\n {2}LOGIN-b1 {2}Check password/);
+  assert.equal(active(cwd), 'EXPORT');
+});
+
+test('with several boards the AI must name the board on every ai command', () => {
+  const cwd = two();
+  const bare = run(cwd, 'ai', 'add', 'box', '--title', 'X', '--user-said', 'a step');
+  assert.equal(bare.status, 1);
+  assert.match(bare.stderr, /Name the board on every board ai command/);
+  assert.equal(Object.keys(load(path.join(cwd, '.board/boards/EXPORT')).nodes).length, 1);
+  assert.equal(run(cwd, 'ai', 'add', 'box', '--title', 'X', '--user-said', 'a step', '--board', 'EXPORT').stdout.trim(), 'added EXPORT-b2');
+  const one = tmp();
+  run(one, 'init', 'Login');
+  assert.equal(run(one, 'ai', 'add', 'box', '--title', 'X', '--user-said', 'a step').status, 0, 'one board: no flag needed');
 });

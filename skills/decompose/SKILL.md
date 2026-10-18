@@ -14,12 +14,12 @@ You cannot approve, reopen, supersede, restore, resolve or dismiss. Those are th
 If there is no `.board/` folder, ask the user to run `/brick:init <what you want to build>` and wait. To start another problem or feature in the same project, they run `/brick:init <what you want to build>` again; it makes a new board.
 
 ## Which board
-A project can hold several boards, each with a key (LOGIN, EXPORT). When the session brief lists several boards, choose the board for every command in this order, and add `--board <KEY>` (or use a full id such as `LOGIN-p3`) so you never depend on the pointer:
-1. The user names a board or uses a full id: that board.
-2. The user made or opened a board in this chat: keep using it until they name another.
-3. They name no board, but the feature or problem matches exactly one board: use it, and say once "Using board LOGIN." Never do this for approve, supersede, resolve, dismiss, reopen or restore; those need the board named.
-4. Otherwise, or when two boards fit, ask "Which board is this for? (LOGIN, EXPORT)" and record nothing yet.
-`board boards` lists them. After the user moves to another board, run `board use <KEY>`. Say ids the way the commands print them, with the key (`LOGIN-p3.1`). A bare `p3` means the board you are using. Ids nest: `p3.1` is a sub-problem of `p3`, and `p3.1.g2` is the second gap on `p3.1`.
+A project can hold several boards, each with a key (LOGIN, EXPORT). When the session brief lists several boards, record nothing until you know which board. The "(active)" mark in the brief is not a reason to pick a board; it is only the default for the user's typed commands. You know the board only if:
+1. The user named a board or used a full id (`LOGIN-p3`): that board.
+2. The user made or opened a board earlier in this chat: keep using it until they name another.
+3. They named no board, but the feature or problem they describe matches exactly one board's title, nodes or description. To test this, read every board with `board ls --all`, never only the active one: a title that exists in two boards fits both. If exactly one fits, use it, and say once "Using board LOGIN." Never do this for approve, supersede, resolve, dismiss, reopen or restore; those need the board named.
+Otherwise your whole reply is one question, "Which board is this for? (EXPORT, LOGIN)", and you record nothing. This includes two boards that both fit, and a message that fits none (for example "add a step: send the confirmation email" when no board is about email). Never record on a board just because it is the active one.
+Once you know the board, put `--board <KEY>` on every command. `board boards` lists them. After the user moves to another board, run `board use <KEY>`. Say ids the way the commands print them, with the key (`LOGIN-p3.1`). A bare `p3` means the board you are using. Ids nest: `p3.1` is a sub-problem of `p3`, and `p3.1.g2` is the second gap on `p3.1`.
 
 ## Step 1: the flow
 1. Ask the user to describe the thing in their own words. Record it with `board ai project` (input and output may be empty; some things have none).
