@@ -1,6 +1,7 @@
 // Signals for `board check`: the part of "is this broken down enough?" that code can know.
 // Facts and flags, never a verdict: the words "ready" and "complete" are not used here.
 import { children, activeChildren, openGaps, displayState } from './model.mjs';
+import { fid } from './ids.mjs';
 
 // Guides, not rules. All the limits live here.
 export const LIMITS = { topMin: 3, topMax: 9, depthMax: 4, siblingsMax: 9 };
@@ -41,14 +42,14 @@ export function nodeSignals(data, id) {
     : sig('contract', missingFields(n).length > 0, contractText(n)));
   out.push(sig('purpose', JOINS.test(n.title), JOINS.test(n.title) ? 'title joins two things' : 'title names one thing'));
   out.push(sig('children', false, kids.length
-    ? `${kids.length} active (${kids.map((c) => `${c.id} ${LABEL[displayState(data, c.id)]}`).join(', ')})`
+    ? `${kids.length} active (${kids.map((c) => `${fid(data, c.id)} ${LABEL[displayState(data, c.id)]}`).join(', ')})`
     : 'none'));
   const sibs = activeChildren(data, n.parent).length;
   out.push(sig('siblings', sibs > LIMITS.siblingsMax, `${sibs} at this level (guide: up to ${LIMITS.siblingsMax})`));
   const depth = depthOf(data, id);
   out.push(sig('depth', depth > LIMITS.depthMax, `${depth} (guide: up to ${LIMITS.depthMax})`));
   const gaps = openGaps(data, id);
-  out.push(sig('gaps', gaps.length > 0, gaps.length ? `${gaps.length} (${gaps.map((g) => g.id).join(', ')})` : 'none'));
+  out.push(sig('gaps', gaps.length > 0, gaps.length ? `${gaps.length} (${gaps.map((g) => fid(data, g.id)).join(', ')})` : 'none'));
   if (isDraft(n)) out.push(sig('draft', true, 'AI draft, not approved yet'));
   return out;
 }
@@ -66,10 +67,10 @@ export function boardSignals(data) {
   return [
     sig('top', top < LIMITS.topMin || top > LIMITS.topMax, `${top} box${top === 1 ? '' : 'es'} at the top level (guide: ${LIMITS.topMin} to ${LIMITS.topMax})`),
     sig('depth', deepest > LIMITS.depthMax, `${deepest} (guide: up to ${LIMITS.depthMax})`),
-    sig('contracts', leaves.length > 0, `pieces with no sub-problems and an incomplete contract: ${list(leaves.map((n) => n.id))}`),
-    sig('purpose', joined.length > 0, `titles that join two things: ${list(joined.map((n) => n.id))}`),
-    sig('gaps', gapped.length > 0, `nodes with open gaps: ${list(gapped.map((n) => `${n.id} (${openGaps(data, n.id).length})`))}`),
-    sig('drafts', drafts.length > 0, `AI drafts not approved yet: ${list(drafts.map((n) => n.id))}`),
+    sig('contracts', leaves.length > 0, `pieces with no sub-problems and an incomplete contract: ${list(leaves.map((n) => fid(data, n.id)))}`),
+    sig('purpose', joined.length > 0, `titles that join two things: ${list(joined.map((n) => fid(data, n.id)))}`),
+    sig('gaps', gapped.length > 0, `nodes with open gaps: ${list(gapped.map((n) => `${fid(data, n.id)} (${openGaps(data, n.id).length})`))}`),
+    sig('drafts', drafts.length > 0, `AI drafts not approved yet: ${list(drafts.map((n) => fid(data, n.id)))}`),
   ];
 }
 
@@ -80,7 +81,7 @@ export function checkText(data, id) {
   if (id) {
     const n = data.nodes[id];
     if (!n) throw new Error(`There is no node "${id}". Run: board ls`);
-    head = `${n.id}  ${n.title}  (${n.kind})`;
+    head = `${fid(data, n.id)}  ${n.title}  (${n.kind})`;
     list = nodeSignals(data, id);
   } else {
     head = `Board: ${data.project.name}`;

@@ -27,7 +27,7 @@ function scenario(title, setup) {
   const board = (...args) => sh('node', [BIN, ...args]);
   board('init', 'Login');
   fs.writeFileSync(path.join(cwd, '.board/config.json'), '{"openBrowserOnSessionStart": false}');
-  const data = () => JSON.parse(fs.readFileSync(path.join(cwd, '.board/tree.json'), 'utf8'));
+  const data = () => JSON.parse(fs.readFileSync(path.join(cwd, '.board/boards/LOGIN/tree.json'), 'utf8'));
   transcript.push(`## ${title}`, '');
   const s = {
     cwd, board, data,

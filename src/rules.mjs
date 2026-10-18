@@ -1,7 +1,7 @@
 // The rules. Each function changes `data` in place or throws an Error saying why not.
 // Callers run these inside store.mutate(), so a throw means nothing is saved.
 import { activeChildren, children, isLeaf, openGaps } from './model.mjs';
-import { addEvent, nextId, TOOL_NAME, PLUGIN_NAME } from './store.mjs';
+import { addEvent, newGapId, TOOL_NAME, PLUGIN_NAME } from './store.mjs';
 
 const T = TOOL_NAME;
 const S = `/${PLUGIN_NAME}:`; // slash commands are what the human types
@@ -115,7 +115,7 @@ export function restore(data, id, now) {
 // Records a gap on a node. No gate or lint yet; the `ai gap` command adds those.
 export function raiseGap(data, actor, nodeId, missing, where, now, kind = null) {
   needNode(data, nodeId);
-  const id = nextId(data, 'g');
+  const id = newGapId(data, nodeId);
   data.gaps[id] = { id, node: nodeId, missing, where: where || null, status: 'open', raised_at: now, closed_at: null, note: null, ...(kind ? { kind } : {}) };
   addEvent(data, actor, 'gap', id, { node: nodeId }, now);
   return id;

@@ -15,7 +15,7 @@ const sh = (cmd, args) => spawnSync(cmd, args, { cwd, encoding: 'utf8', stdio: [
 // Asks Claude Code (with the plugin loaded) one thing, as a headless prompt.
 const claude = (prompt) => sh('claude', ['-p', prompt, '--plugin-dir', ROOT, '--allowedTools', 'Bash,Skill', '--max-turns', '5']);
 // Reads a node's status from the board file.
-const status = (id) => JSON.parse(fs.readFileSync(path.join(cwd, '.board/tree.json'), 'utf8')).nodes[id].status;
+const status = (id) => JSON.parse(fs.readFileSync(path.join(cwd, '.board/boards/E2E/tree.json'), 'utf8')).nodes[id].status;
 // Prints OK or FAIL for one check.
 function check(label, ok, detail = '') {
   console.log(`${ok ? 'OK  ' : 'FAIL'} ${label}${ok ? '' : ` ${detail}`}`);

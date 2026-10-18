@@ -9,13 +9,13 @@ import { execute } from '../src/commands.mjs';
 const BIN = path.resolve('bin/board.mjs');
 const cli = (cwd, ...a) => spawnSync('node', [BIN, ...a], { cwd, encoding: 'utf8' });
 
-test('init creates the data folder and config; refuses a second time', () => {
+test('init creates the board and config; a taken key is refused', () => {
   const dir = tmp();
   const r = cli(dir, 'init', 'Demo', '--input', 'a', '--output', 'b');
   assert.equal(r.status, 0, r.stderr);
-  assert.ok(fs.existsSync(path.join(dir, '.board/tree.json')));
+  assert.ok(fs.existsSync(path.join(dir, '.board/boards/DEMO/tree.json')));
   assert.deepEqual(JSON.parse(fs.readFileSync(path.join(dir, '.board/config.json'), 'utf8')), { openBrowserOnSessionStart: true });
-  const again = cli(dir, 'init', 'Demo');
+  const again = cli(dir, 'init', 'Other', '--key', 'DEMO');
   assert.equal(again.status, 1);
   assert.match(again.stderr, /already exists/);
 });

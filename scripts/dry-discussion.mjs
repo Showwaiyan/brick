@@ -28,7 +28,7 @@ function scenario(title, setup) {
   const sh = (cmd, args) => spawnSync(cmd, args, { cwd, env, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
   sh('git', ['init', '-q']);
   const board = (...args) => sh('node', [BIN, ...args]);
-  const data = () => JSON.parse(fs.readFileSync(path.join(cwd, '.board/tree.json'), 'utf8'));
+  const data = () => JSON.parse(fs.readFileSync(path.join(cwd, '.board/boards/LOGIN/tree.json'), 'utf8'));
   transcript.push(`## ${title}`, '');
   const s = {
     cwd, board, data,
@@ -116,7 +116,7 @@ if (!only || only === '4') {
 if (!only || only === '5') {
   const s = scenario('5. After /brick:init', () => {});
   const r = s.says('/brick:init login feature for my app');
-  s.check('the board was created', fs.existsSync(path.join(s.cwd, '.board/tree.json')), r);
+  s.check('the board was created', fs.existsSync(path.join(s.cwd, '.board/boards')) && fs.readdirSync(path.join(s.cwd, '.board/boards')).length === 1, r);
   s.check('it asks what you want to solve and how', /what do you want to solve/i.test(r) && /how do you want/i.test(r), r);
   s.check('nothing was recorded yet', s.nodes() === 0, JSON.stringify(s.data().nodes));
   s.end();

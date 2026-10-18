@@ -119,8 +119,8 @@ test('guard prompt: a typed /brick:approve runs the action and prints the result
   const dir = boardDir();
   const r = prompt('brick:approve', 'b1', dir);
   assert.equal(r.status, 0);
-  assert.equal(r.stdout.trim(), '[brick] approved b1');
-  assert.equal(JSON.parse(fs.readFileSync(path.join(dir, '.board/tree.json'), 'utf8')).nodes.b1.status, 'approved');
+  assert.equal(r.stdout.trim(), '[brick] approved PROJ-b1');
+  assert.equal(JSON.parse(fs.readFileSync(path.join(dir, '.board/boards/PROJ/tree.json'), 'utf8')).nodes.b1.status, 'approved');
 });
 
 test('guard prompt: other commands, bad input and empty payloads are silent', () => {
@@ -134,7 +134,7 @@ test('guard prompt: other commands, bad input and empty payloads are silent', ()
   const bad = spawnSync('node', [BIN, 'guard', 'prompt'], { input: 'not json', encoding: 'utf8', cwd: dir });
   assert.equal(bad.status, 0);
   assert.equal(bad.stdout, '');
-  assert.equal(JSON.parse(fs.readFileSync(path.join(dir, '.board/tree.json'), 'utf8')).nodes.b1.status, 'drafting');
+  assert.equal(JSON.parse(fs.readFileSync(path.join(dir, '.board/boards/PROJ/tree.json'), 'utf8')).nodes.b1.status, 'drafting');
 });
 
 test('guard prompt: with no board it says to run /brick:init', () => {
@@ -167,4 +167,17 @@ test('review fix: a bare .board word and a symlink into .board are caught', () =
   spawnSync('node', [BIN, 'init', 'L'], { cwd: dir });
   fs.symlinkSync(path.join(dir, '.board'), path.join(dir, 'sneaky'));
   assert.equal(write(path.join(dir, 'sneaky/tree.json'), 'Write', dir).status, 2);
+});
+
+test('guard bash: boards and use are allowed, and --board cannot hide a human-only command', () => {
+  for (const c of ['board boards', 'board use LOGIN', 'board ls --board LOGIN', 'board ai add box --title x --user-said y --board LOGIN']) {
+    assert.equal(bash(c).status, 0, c);
+  }
+  for (const c of ['board approve LOGIN-p1', 'board approve p1 --board LOGIN', 'board init x --key AB', 'board gap resolve LOGIN-p1.g1 --note x']) {
+    assert.equal(bash(c).status, 2, c);
+  }
+  // A flag before the command is read by the guard as the command word; board itself refuses it.
+  const r = spawnSync('node', [BIN, '--board', 'LOGIN', 'approve', 'p1'], { encoding: 'utf8', cwd: BOARD });
+  assert.equal(r.status, 1);
+  assert.match(r.stderr, /after the command/);
 });

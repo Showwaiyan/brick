@@ -2,6 +2,7 @@
 import { children, displayState, openGaps, nextCommands } from './model.mjs';
 import { approveCheck } from './rules.mjs';
 import { TOOL_NAME, PLUGIN_NAME } from './store.mjs';
+import { fid } from './ids.mjs';
 
 const T = TOOL_NAME;
 const LABEL = { approved: 'approved', drafting: 'drafting', has_gaps: 'has gaps', superseded: 'superseded' };
@@ -9,7 +10,7 @@ const LABEL = { approved: 'approved', drafting: 'drafting', has_gaps: 'has gaps'
 export const HELP = `${T} - keep the breakdown of a project in a file you own.
 
 Human commands (run these yourself; in Claude Code type them with a leading !):
-  ${T} init "<name>" [--input ".."] [--output ".."] [--demo]
+  ${T} init "<name>" [--key KEY] [--input ".."] [--output ".."] [--demo]
   ${T} add box|problem "<title>" [--parent <id>] [--after <id>] [--desc ..] [--input ..] [--output ..] [--check ..] [--limits ..]
   ${T} edit <id> [--title ..] [--desc ..] [--input ..] [--output ..] [--check ..] [--limits ..]
   ${T} project [--name ..] [--input ..] [--output ..]
@@ -27,8 +28,11 @@ AI commands (the only writes the AI may run; each needs the user's own words):
   ${T} ai project --user-said "<quote>" [--input ..] [--output ..]
   ${T} ai gap <nodeId> --missing "<what is missing>" [--kind edge-case|architecture|assumption|order|other] [--where "<location>"]
 
+Several boards: ids carry the board key (LOGIN-p3.1). Add --board KEY after any command, or use a full id.
 Read-only (human or AI):
-  ${T} ls | ${T} show <id> | ${T} log [--last N] | ${T} brief | ${T} help
+  ${T} ls [--all] | ${T} show <id> | ${T} log [--last N] | ${T} brief | ${T} help
+  ${T} boards              the boards in this project (* is the active one)
+  ${T} use <KEY>           make a board the active one
   ${T} check [id]          signals about size and shape (facts and flags, not a verdict)
   ${T} render              rebuild .board/tree.html
   ${T} open [--quiet]      rebuild it and open it in your browser
@@ -48,13 +52,14 @@ function postOrder(data, parent = null) {
 export function ls(data) {
   const p = data.project;
   const io = p.input || p.output ? `  (${p.input || '-'} -> ${p.output || '-'})` : '';
-  const lines = [`${p.name}${io}`];
+  const F = (id) => fid(data, id);
+  const lines = [`${p.name}${p.key ? ` [${p.key}]` : ''}${io}`];
   for (const [n, depth] of walk(data)) {
     const state = displayState(data, n.id);
     const gaps = openGaps(data, n.id).length;
     const tag = state === 'superseded' ? '(superseded)' : `[${LABEL[state]}]`;
     const draft = n.source === 'ai-draft' && n.status === 'drafting' ? '  AI draft' : '';
-    lines.push(`${'  '.repeat(depth + 1)}${n.id}  ${n.title}  ${tag}${draft}${gaps ? `  ${gaps} open gap${gaps > 1 ? 's' : ''}` : ''}`);
+    lines.push(`${'  '.repeat(depth + 1)}${F(n.id)}  ${n.title}  ${tag}${draft}${gaps ? `  ${gaps} open gap${gaps > 1 ? 's' : ''}` : ''}`);
   }
   if (lines.length === 1) lines.push(`  (empty) Start with: ${T} add box "<title>"`);
   return lines.join('\n');
@@ -66,29 +71,30 @@ export function eventsFor(data, id) {
 }
 
 // One event as a line.
-function eventLine(e) {
+function eventLine(e, key = null) {
   const d = Object.keys(e.detail || {}).length ? ` ${JSON.stringify(e.detail)}` : '';
-  return `#${e.seq} ${e.at} ${e.actor} ${e.action} ${e.target ?? '-'}${d}`;
+  return `#${e.seq} ${e.at} ${e.actor} ${e.action} ${e.target ? (key ? `${key}-${e.target}` : e.target) : '-'}${d}`;
 }
 
 // One node in full.
 export function show(data, id) {
   const n = data.nodes[id];
   if (!n) throw new Error(`There is no node "${id}". Run: ${T} ls`);
-  const out = [`${n.id}  ${n.title}`, `kind: ${n.kind}   parent: ${n.parent || '-'}   state: ${LABEL[displayState(data, id)]}   source: ${n.source}`];
+  const F = (x) => fid(data, x);
+  const out = [`${F(n.id)}  ${n.title}`, `kind: ${n.kind}   parent: ${n.parent ? F(n.parent) : '-'}   state: ${LABEL[displayState(data, id)]}   source: ${n.source}`];
   out.push(`description: ${n.description || 'not set'}`, 'contract:');
   for (const k of ['input', 'output', 'check', 'limits']) out.push(`  ${k}: ${n.contract[k] ?? 'not set'}`);
   if (n.said.length) out.push('said by the user:', ...n.said.map((s) => `  "${s}"`));
   const gaps = Object.values(data.gaps).filter((g) => g.node === id);
   if (gaps.length) {
     out.push('gaps:');
-    for (const g of gaps) out.push(`  ${g.id} [${g.status}] ${g.kind ? `(${g.kind}) ` : ''}${g.missing}${g.where ? ` (${g.where})` : ''}${g.note ? ` - ${g.note}` : ''}`);
+    for (const g of gaps) out.push(`  ${F(g.id)} [${g.status}] ${g.kind ? `(${g.kind}) ` : ''}${g.missing}${g.where ? ` (${g.where})` : ''}${g.note ? ` - ${g.note}` : ''}`);
   }
   if (n.superseded) {
     const s = n.superseded;
-    out.push(`superseded: ${s.reason}${s.by ? `  (replaced by ${s.by})` : ''}${s.cascade_from ? `  (with ${s.cascade_from})` : ''}`);
+    out.push(`superseded: ${s.reason}${s.by ? `  (replaced by ${F(s.by)})` : ''}${s.cascade_from ? `  (with ${F(s.cascade_from)})` : ''}`);
   }
-  out.push('recent events:', ...eventsFor(data, id).slice(0, 10).map((e) => `  ${eventLine(e)}`));
+  out.push('recent events:', ...eventsFor(data, id).slice(0, 10).map((e) => `  ${eventLine(e, data.project.key)}`));
   out.push('next commands:', ...nextCommands(data, id).map((c) => `  ${c}`));
   return out.join('\n');
 }
@@ -96,29 +102,48 @@ export function show(data, id) {
 // The event log, newest first.
 export function log(data, last) {
   if (!Number.isInteger(last) || last < 1) throw new Error('--last needs a whole number of 1 or more.');
-  return data.events.slice().reverse().slice(0, last).map(eventLine).join('\n') || '(no events yet)';
+  return data.events.slice().reverse().slice(0, last).map((e) => eventLine(e, data.project.key)).join('\n') || '(no events yet)';
 }
 
 // The single most useful next command for the human.
 function nextStep(data) {
+  const F = (id) => fid(data, id);
   const gap = Object.values(data.gaps).find((g) => g.status === 'open');
-  if (gap) return `${T} show ${gap.node}   (${gap.id} is open: resolve or dismiss it)`;
+  if (gap) return `${T} show ${F(gap.node)}   (${F(gap.id)} is open: resolve or dismiss it)`;
   if (!Object.keys(data.nodes).length) return `${T} add box "<title>"`;
   const drafting = postOrder(data).filter((n) => n.status === 'drafting');
   const ready = drafting.find((n) => approveCheck(data, n.id) === null);
-  if (ready) return `/${PLUGIN_NAME}:approve ${ready.id}`;
-  return drafting.length ? `${T} show ${drafting[0].id}   (see what is left to fill in)` : `${T} ls`;
+  if (ready) return `/${PLUGIN_NAME}:approve ${F(ready.id)}`;
+  return drafting.length ? `${T} show ${F(drafting[0].id)}   (see what is left to fill in)` : `${T} ls`;
 }
 
-// Five lines: project, counts, open gaps, next command, pointer.
-export function brief(data) {
+// The list of boards, with the active one marked.
+const boardsLine = ({ boards, active }) =>
+  `Boards: ${boards.map((b) => `${b.key}${b.key === active ? ' (active)' : ''}`).join(', ')}`;
+
+// How the AI picks a board when there are several. Typed commands follow stricter rules in code.
+const BOARD_RULES = 'IMPORTANT, several boards: record nothing until you know which board. The "(active)" mark means nothing for you; it is only the default for the user\'s typed commands. You know the board only if (1) the user named a board or a full id, (2) the user made or opened a board earlier in THIS chat, or (3) the feature or problem they describe matches exactly one board\'s title, nodes or description (to test this, read every board with `board ls --all`, never only one; if two boards fit, ask; otherwise say "Using board <KEY>." once; never for approve, supersede, resolve, dismiss, reopen or restore, which need the board named). Otherwise your whole reply is one question, "Which board is this for? (<KEYS>)", and you record nothing. Never record on the board just because it is active: a message that names no board and fits no single board gets the question. Once you know, put --board <KEY> on every board command. After the user switches to another board, run `board use <KEY>`.';
+
+// With several boards and none active: the list, what to do, and the rules.
+export function briefNoActive(ctx) {
+  return [
+    boardsLine({ boards: ctx.boards, active: null }),
+    'No board is active. Ask the user which board they mean before recording anything.',
+    BOARD_RULES,
+  ].join('\n');
+}
+
+// The session brief: project, counts, open gaps, next command, pointer, and the rules.
+export function brief(data, ctx = null) {
   const count = { approved: 0, drafting: 0, has_gaps: 0, superseded: 0 };
   for (const id of Object.keys(data.nodes)) count[displayState(data, id)] += 1;
   const open = Object.values(data.gaps).filter((g) => g.status === 'open');
+  const many = ctx && ctx.boards.length > 1;
   return [
-    `Project: ${data.project.name}`,
+    `Project: ${data.project.name}${data.project.key ? ` (board ${data.project.key})` : ''}`,
+    ...(many ? [boardsLine(ctx), BOARD_RULES] : []),
     `Nodes: ${count.approved} approved, ${count.drafting} drafting, ${count.has_gaps} with gaps, ${count.superseded} superseded`,
-    `Open gaps: ${open.length}${open.length ? ` (${open.map((g) => `${g.id} on ${g.node}`).join(', ')})` : ''}`,
+    `Open gaps: ${open.length}${open.length ? ` (${open.map((g) => `${fid(data, g.id)} on ${fid(data, g.node)}`).join(', ')})` : ''}`,
     `Next: ${nextStep(data)}`,
     `Tree: ${T} ls`,
     'Discussion rules: never volunteer ideas, options, designs or recommendations. When the user states a flow step, a sub-problem or a contract, record it at once in their words (board ai add, edit or project with --user-said, after loading the brick:decompose skill), say the id, then ask one question. Run board ls first, and edit a node that already exists instead of adding a duplicate.',

@@ -6,6 +6,8 @@ import { load, TOOL_NAME } from './store.mjs';
 import { children, activeChildren, displayState, openGaps } from './model.mjs';
 import { eventsFor } from './text.mjs';
 import { addDiagrams } from './flow.mjs';
+import { compareIds } from './ids.mjs';
+import { renderOverview } from './overview.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
@@ -18,11 +20,11 @@ function summary(e) {
 }
 
 // Everything the page needs, with all rules already applied (the page has none).
-export function pageData(data, now) {
+export function pageData(data, now, opts = {}) {
   const nodes = {};
   for (const n of Object.values(data.nodes)) {
     const gaps = Object.values(data.gaps).filter((g) => g.node === n.id)
-      .sort((a, b) => (a.status === 'open' ? 0 : 1) - (b.status === 'open' ? 0 : 1) || Number(a.id.slice(1)) - Number(b.id.slice(1)));
+      .sort((a, b) => (a.status === 'open' ? 0 : 1) - (b.status === 'open' ? 0 : 1) || compareIds(a.id, b.id));
     nodes[n.id] = {
       id: n.id, kind: n.kind, parent: n.parent, title: n.title, description: n.description,
       contract: n.contract, source: n.source, said: n.said, superseded: n.superseded,
@@ -36,7 +38,7 @@ export function pageData(data, now) {
   }
   const states = Object.values(nodes).map((n) => n.state);
   return {
-    project: data.project, generated_at: now, tool: TOOL_NAME,
+    project: data.project, generated_at: now, tool: TOOL_NAME, overview: opts.overview || null,
     roots: children(data, null).map((n) => n.id), nodes,
     counts: {
       approved: states.filter((s) => s === 'approved').length,
@@ -63,7 +65,7 @@ export function safeJson(obj) {
 const escapeHtml = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
 // The whole page as one string.
-export function renderHtml(data, now = new Date().toISOString()) {
+export function renderHtml(data, now = new Date().toISOString(), opts = {}) {
   const css = fs.readFileSync(path.join(HERE, 'page.css'), 'utf8');
   const js = ['canvas.js', 'page.js'].map((f) => fs.readFileSync(path.join(HERE, f), 'utf8')).join('\n');
   return `<!doctype html>
@@ -78,7 +80,7 @@ ${css}</style>
 <body>
 <div id="app"></div>
 <noscript><p>This page needs JavaScript to draw the board. Run "${TOOL_NAME} ls" for a text view.</p></noscript>
-<script id="data" type="application/json">${safeJson(addDiagrams(pageData(data, now)))}</script>
+<script id="data" type="application/json">${safeJson(addDiagrams(pageData(data, now, opts)))}</script>
 <script>
 ${js}</script>
 </body>
@@ -90,15 +92,22 @@ ${js}</script>
 export function renderFile(dir) {
   const file = path.join(dir, 'tree.html');
   const tmp = `${file}.${process.pid}.tmp`;
-  fs.writeFileSync(tmp, renderHtml(load(dir)));
+  fs.writeFileSync(tmp, renderHtml(load(dir), undefined, { overview: dataDirOf(dir) ? '../../index.html' : null }));
   fs.renameSync(tmp, file);
   return file;
 }
 
-// Renders after a save. A failure only warns: the data is already saved.
+// The data folder when `dir` is a board folder (<data>/boards/<KEY>), else null.
+function dataDirOf(dir) {
+  const boards = path.dirname(dir);
+  return path.basename(boards) === 'boards' ? path.dirname(boards) : null;
+}
+
+// Renders after a save, and refreshes the overview. A failure only warns: the data is already saved.
 export function renderQuiet(dir) {
   try {
     renderFile(dir);
+    if (dataDirOf(dir)) renderOverview(dataDirOf(dir));
   } catch (e) {
     console.error(`warning: could not update tree.html (your data is saved): ${e.message}`);
   }

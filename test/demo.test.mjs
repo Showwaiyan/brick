@@ -10,7 +10,7 @@ test('the demo matches section 12', () => {
   const dir = tmp();
   const r = spawnSync('node', [path.resolve('bin/board.mjs'), 'init', 'User login', '--demo'], { cwd: dir, encoding: 'utf8' });
   assert.equal(r.status, 0, r.stderr);
-  const d = load(path.join(dir, '.board'));
+  const d = load(path.join(dir, '.board/boards/USER'));
   assert.equal(d.project.input, 'username + password');
   assert.equal(d.project.output, 'logged in');
   const states = Object.fromEntries(Object.keys(d.nodes).map((id) => [id, displayState(d, id)]));

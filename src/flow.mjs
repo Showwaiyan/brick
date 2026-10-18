@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
 import { fileURLToPath } from 'node:url';
+import { fullId } from './ids.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const PELE_FILE = path.join(HERE, '..', 'node_modules', 'pele', 'dist', 'pele.global.js');
@@ -23,14 +24,17 @@ const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 const live = (pd, ids) => ids.filter((id) => pd.nodes[id].state !== 'superseded');
 const dead = (pd, ids) => ids.filter((id) => pd.nodes[id].state === 'superseded');
 
+// Mermaid ids cannot hold a dot, so p1.1 is drawn as p1_1 (the page maps it back).
+const mid = (id) => id.replace(/\./g, '_');
+
 // One node line: title, then state, id and counts.
 function nodeLine(pd, id, indent = '  ') {
   const n = pd.nodes[id];
-  const sub = [`${STATE_LABEL[n.state] || n.state} · ${id}`,
+  const sub = [`${STATE_LABEL[n.state] || n.state} · ${fullId(pd.project.key, id)}`,
     n.source === 'ai-draft' && n.state !== 'approved' && n.state !== 'superseded' ? 'AI draft' : '',
     n.active_children ? `${n.active_children} sub` : '',
     n.open_gaps ? plural(n.open_gaps, 'gap') : ''].filter(Boolean).join(' · ');
-  return `${indent}${id}["${escapeLabel(n.title)}<br/>${escapeLabel(sub)}"]:::${n.state}`;
+  return `${indent}${mid(id)}["${escapeLabel(n.title)}<br/>${escapeLabel(sub)}"]:::${n.state}`;
 }
 
 // The group for dropped nodes, which are drawn but not chained.
@@ -49,7 +53,7 @@ export function boardMermaid(pd) {
   if (pd.project.input) { lines.push(ioLine('IN', pd.project.input)); chain.push('IN'); }
   for (const id of live(pd, pd.roots)) { lines.push(nodeLine(pd, id)); chain.push(id); }
   if (pd.project.output) { lines.push(ioLine('OUT', pd.project.output)); chain.push('OUT'); }
-  if (chain.length > 1) lines.push(`  ${chain.join(' --> ')}`);
+  if (chain.length > 1) lines.push(`  ${chain.map(mid).join(' --> ')}`);
   return [...lines, ...droppedGroup(pd, dead(pd, pd.roots))].join('\n');
 }
 
@@ -61,12 +65,12 @@ export function treeMermaid(pd) {
   const walk = (id) => {
     lines.push(nodeLine(pd, id));
     for (const c of pd.nodes[id].children) {
-      edges.push(`  ${id} ${pd.nodes[c].state === 'superseded' ? '-.->' : '-->'} ${c}`);
+      edges.push(`  ${mid(id)} ${pd.nodes[c].state === 'superseded' ? '-.->' : '-->'} ${mid(c)}`);
       walk(c);
     }
   };
   for (const id of pd.roots) {
-    edges.push(`  ROOT ${pd.nodes[id].state === 'superseded' ? '-.->' : '-->'} ${id}`);
+    edges.push(`  ROOT ${pd.nodes[id].state === 'superseded' ? '-.->' : '-->'} ${mid(id)}`);
     walk(id);
   }
   return [...lines, ...edges].join('\n');
@@ -79,7 +83,7 @@ export function nodeMermaid(pd, id) {
   const lines = ['flowchart LR'];
   const active = live(pd, kids);
   for (const c of active) lines.push(nodeLine(pd, c));
-  if (active.length > 1) lines.push(`  ${active.join(' --> ')}`);
+  if (active.length > 1) lines.push(`  ${active.map(mid).join(' --> ')}`);
   return [...lines, ...droppedGroup(pd, dead(pd, kids))].join('\n');
 }
 

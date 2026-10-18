@@ -35,7 +35,7 @@ h1, h2, h3, p { margin: 0; }
 .history { margin: 0; padding-left: 18px; font-size: 14px; }
 .gap { margin-bottom: 8px; display: grid; gap: 4px; }
 .gap.closed { color: var(--muted); }
-.link { border: 0; background: none; color: #1F55C9; text-decoration: underline; cursor: pointer; padding: 0; }
+.link, a.link { border: 0; background: none; color: #1F55C9; text-decoration: underline; cursor: pointer; padding: 0; }
 .badge { padding: 1px 8px; border-radius: 999px; font-size: 13px; border: 1px solid var(--border); }
 
 /* the pan-and-zoom surface and pele's diagram */

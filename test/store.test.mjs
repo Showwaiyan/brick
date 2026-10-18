@@ -60,3 +60,49 @@ test('validation catches structural mistakes', () => {
   bad((d) => { d.counters.p = 1; }, /counter is behind/);
   bad((d) => { addEvent(d, 'human', 'add', 'b1'); d.events[0].seq = 5; }, /seq/);
 });
+
+// ---------- nested ids ----------
+
+import { newBoard } from './helpers.mjs';
+import { execute } from '../src/commands.mjs';
+
+test('children get nested ids, and a number is never reused', async () => {
+  const dir = await newBoard();
+  const x = (...a) => execute(dir, a);
+  assert.match(x('add', 'box', 'One'), /added b1/);
+  assert.match(x('add', 'problem', 'A', '--parent', 'b1'), /added p1 under b1/);
+  assert.match(x('add', 'problem', 'A1', '--parent', 'p1'), /added p1\.1 under p1/);
+  assert.match(x('add', 'problem', 'A2', '--parent', 'p1'), /added p1\.2 under p1/);
+  assert.match(x('add', 'problem', 'A11', '--parent', 'p1.1'), /added p1\.1\.1 under p1\.1/);
+  x('supersede', 'p1.2', '--why', 'not needed');
+  assert.match(x('add', 'problem', 'A3', '--parent', 'p1'), /added p1\.3 under p1/);
+  assert.match(x('add', 'problem', 'Early', '--parent', 'p1', '--after', 'p1.1'), /added p1\.4 under p1/);
+  assert.deepEqual(Object.keys(load(dir).nodes).sort(), ['b1', 'p1', 'p1.1', 'p1.1.1', 'p1.2', 'p1.3', 'p1.4']);
+});
+
+test('gaps get nested ids, numbered per node, and a number is never reused', async () => {
+  const dir = await newBoard();
+  const x = (...a) => execute(dir, a);
+  x('add', 'box', 'One');
+  x('add', 'problem', 'A', '--parent', 'b1');
+  x('add', 'problem', 'A1', '--parent', 'p1');
+  const gap = () => x('ai', 'gap', 'p1.1', '--missing', 'Nothing says what happens when the list is empty.');
+  assert.match(gap(), /raised p1\.1\.g1 on p1\.1/);
+  assert.match(gap(), /raised p1\.1\.g2 on p1\.1/);
+  x('gap', 'dismiss', 'p1.1.g1', '--why', 'not real');
+  assert.match(gap(), /raised p1\.1\.g3 on p1\.1/);
+  assert.match(x('ai', 'gap', 'p1', '--missing', 'Nothing says what happens when the list is empty.'), /raised p1\.g1 on p1/);
+});
+
+test('validate checks nested ids against their parent and node', () => {
+  const d = sample();
+  d.nodes['p1.1'] = { ...d.nodes.p2, id: 'p1.1', parent: 'b1', order: 5 };
+  assert.throws(() => validate(d), /p1\.1: id does not match its parent/);
+  d.nodes['p1.1'].parent = 'p1';
+  validate(d);
+  d.gaps['p2.g1'] = { ...d.gaps.g1, id: 'p2.g1', node: 'p1' };
+  assert.throws(() => validate(d), /p2\.g1: id does not match its node/);
+  d.gaps['p2.g1'].node = 'p2';
+  validate(d);
+  validate(sample());
+});

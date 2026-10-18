@@ -2,6 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
+import { parentOf, deriveKey, KEY_RE } from './ids.mjs';
 
 // The one place the tool's name lives. The data folder is derived from it.
 export const TOOL_NAME = 'board';
@@ -54,13 +55,13 @@ export function findProject(cwd = process.cwd()) {
         warnings.push(`Ignoring ${DATA_DIR}/ inside this worktree; using the main checkout: ${root}`);
       }
     }
-    return { root, dir, exists: fs.existsSync(path.join(dir, 'tree.json')), warnings };
+    return { root, dir, exists: hasBoards(dir), warnings };
   }
   // Not a git repo (or git is missing): walk up looking for the data folder.
   let cur = real(cwd);
   for (;;) {
     const dir = path.join(cur, DATA_DIR);
-    if (fs.existsSync(dir)) return { root: cur, dir, exists: fs.existsSync(path.join(dir, 'tree.json')), warnings };
+    if (fs.existsSync(dir)) return { root: cur, dir, exists: hasBoards(dir), warnings };
     const parent = path.dirname(cur);
     if (parent === cur) break;
     cur = parent;
@@ -69,13 +70,93 @@ export function findProject(cwd = process.cwd()) {
   return { root, dir: path.join(root, DATA_DIR), exists: false, warnings };
 }
 
+// ---------- boards ----------
+
+// The data folder holds boards/<KEY>/tree.json. A tree.json straight in it is the old layout.
+export const BOARDS_DIR = 'boards';
+export const boardsDir = (dataDir) => path.join(dataDir, BOARDS_DIR);
+
+// Every board in the data folder, sorted by key.
+export function listBoards(dataDir) {
+  let names;
+  try { names = fs.readdirSync(boardsDir(dataDir)); } catch { return []; }
+  return names.filter((k) => fs.existsSync(path.join(boardsDir(dataDir), k, 'tree.json')))
+    .sort().map((key) => ({ key, dir: path.join(boardsDir(dataDir), key) }));
+}
+
+// True when there is a board in the old layout or the new one.
+function hasBoards(dataDir) {
+  return fs.existsSync(path.join(dataDir, 'tree.json')) || listBoards(dataDir).length > 0;
+}
+
+// Creates a board from `data` (its project.key names the folder). Returns the board folder.
+export function createBoard(dataDir, data) {
+  const key = data.project.key;
+  if (!KEY_RE.test(String(key))) throw new Error(`"${key}" is not a board key. Use 2 to 6 capital letters or digits, starting with a letter.`);
+  const dir = path.join(boardsDir(dataDir), key);
+  if (fs.existsSync(path.join(dir, 'tree.json'))) throw new Error(`Board ${key} already exists.`);
+  create(dir, data);
+  return dir;
+}
+
+// The key in `active`, if it names a board that exists.
+export function activeKey(dataDir) {
+  try {
+    const key = fs.readFileSync(path.join(dataDir, 'active'), 'utf8').trim().toUpperCase();
+    return listBoards(dataDir).some((b) => b.key === key) ? key : null;
+  } catch {
+    return null;
+  }
+}
+
+// Points `active` at a board (temp file + rename).
+export function setActive(dataDir, key) {
+  const file = path.join(dataDir, 'active');
+  const tmpFile = `${file}.${process.pid}.tmp`;
+  fs.writeFileSync(tmpFile, `${key}\n`);
+  fs.renameSync(tmpFile, file);
+}
+
+// Moves a tree.json from the old layout into boards/<KEY>/. Returns the key, or null if there was nothing to move.
+// Safe to run twice: the key is written into the old file first, then one rename moves it.
+export function migrateLegacy(dataDir) {
+  const legacy = path.join(dataDir, 'tree.json');
+  if (!fs.existsSync(legacy)) return null;
+  const lock = acquireLock(dataDir);
+  try {
+    if (!fs.existsSync(legacy)) return null;
+    let data;
+    try {
+      data = JSON.parse(fs.readFileSync(legacy, 'utf8'));
+      validate(data);
+    } catch (e) {
+      throw new Error(`${legacy} is not valid, so it was not moved: ${e.message}`);
+    }
+    let key = data.project.key;
+    if (!KEY_RE.test(String(key))) {
+      key = deriveKey(data.project.name, listBoards(dataDir).map((b) => b.key));
+      data.project.key = key;
+      writeFile(dataDir, data);
+    }
+    const dest = path.join(boardsDir(dataDir), key);
+    if (fs.existsSync(path.join(dest, 'tree.json'))) throw new Error(`Cannot move ${legacy}: board ${key} already exists.`);
+    fs.mkdirSync(dest, { recursive: true });
+    fs.renameSync(legacy, path.join(dest, 'tree.json'));
+    const html = path.join(dataDir, 'tree.html');
+    if (fs.existsSync(html)) fs.renameSync(html, path.join(dest, 'tree.html'));
+    return key;
+  } finally {
+    fs.rmSync(lock, { force: true });
+  }
+}
+
 // ---------- data helpers ----------
 
 // A brand-new, empty data file.
-export function emptyData(name, input = null, output = null, now = new Date().toISOString()) {
+export function emptyData(name, input = null, output = null, now = new Date().toISOString(), key = null) {
   return {
     version: 1,
-    project: { name, input, output, created_at: now },
+    project: { name, input, output, created_at: now, ...(key ? { key } : {}) },
     counters: { b: 0, p: 0, g: 0 },
     nodes: {},
     gaps: {},
@@ -87,6 +168,24 @@ export function emptyData(name, input = null, output = null, now = new Date().to
 export function nextId(data, prefix) {
   data.counters[prefix] += 1;
   return `${prefix}${data.counters[prefix]}`;
+}
+
+// The id for a new node. Boxes and problems directly under a box take the next flat number;
+// deeper nodes take their parent's id plus the next number among that parent's children.
+export function newNodeId(data, kind, parent) {
+  if (kind === 'box') return nextId(data, 'b');
+  if (data.nodes[parent].kind === 'box') return nextId(data, 'p');
+  return `${parent}.${highest(Object.keys(data.nodes), `${parent}.`) + 1}`;
+}
+
+// The id for a new gap on a node: the node's id, ".g", and the next number for that node.
+export function newGapId(data, nodeId) {
+  return `${nodeId}.g${highest(Object.keys(data.gaps), `${nodeId}.g`) + 1}`;
+}
+
+// The highest number that follows `prefix` in ids like `<prefix><digits>` (0 if none).
+function highest(ids, prefix) {
+  return Math.max(0, ...ids.filter((id) => id.startsWith(prefix) && /^\d+$/.test(id.slice(prefix.length))).map((id) => Number(id.slice(prefix.length))));
 }
 
 // Appends an event with the next sequence number. Events are never edited.
@@ -118,8 +217,12 @@ export function validate(data) {
     const slot = `${n.parent}#${n.order}`;
     if (siblings.has(slot)) errs.push(`${key}: order ${n.order} already used by ${siblings.get(slot)}`);
     siblings.set(slot, key);
-    const num = Number(key.slice(1));
-    if (data.counters[key[0]] === undefined || data.counters[key[0]] < num) errs.push(`${key}: counter is behind`);
+    if (key.includes('.')) {
+      if (parentOf(key) !== n.parent) errs.push(`${key}: id does not match its parent`);
+    } else {
+      const num = Number(key.slice(1));
+      if (data.counters[key[0]] === undefined || data.counters[key[0]] < num) errs.push(`${key}: counter is behind`);
+    }
   }
   for (const key of Object.keys(nodes)) {
     const seen = new Set();
@@ -132,7 +235,9 @@ export function validate(data) {
     if (g.id !== key) errs.push(`gap key ${key} does not match its id ${g.id}`);
     if (!nodes[g.node]) errs.push(`${key}: node ${g.node} does not exist`);
     if (!GAP_STATUSES.includes(g.status)) errs.push(`${key}: bad status ${g.status}`);
-    if (!(data.counters.g >= Number(key.slice(1)))) errs.push(`${key}: counter is behind`);
+    if (key.includes('.')) {
+      if (parentOf(key) !== g.node) errs.push(`${key}: id does not match its node`);
+    } else if (!(data.counters.g >= Number(key.slice(1)))) errs.push(`${key}: counter is behind`);
   }
   (data.events || []).forEach((e, i) => {
     if (e.seq !== i + 1) errs.push(`event ${i + 1}: seq is ${e.seq}`);

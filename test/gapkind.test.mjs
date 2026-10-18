@@ -14,8 +14,8 @@ async function boardWithBox() {
 test('ai gap --kind stores the kind and shows it', async () => {
   const dir = await boardWithBox();
   execute(dir, ['ai', 'gap', 'b1', '--missing', 'Nothing says what happens on two attempts at once.', '--kind', 'edge-case']);
-  assert.equal(load(dir).gaps.g1.kind, 'edge-case');
-  assert.match(execute(dir, ['show', 'b1']), /g1 \[open\] \(edge-case\) Nothing says what happens on two attempts at once\./);
+  assert.equal(load(dir).gaps['b1.g1'].kind, 'edge-case');
+  assert.match(execute(dir, ['show', 'b1']), /b1\.g1 \[open\] \(edge-case\) Nothing says what happens on two attempts at once\./);
   assert.equal(pageData(load(dir), 'now').nodes.b1.gaps[0].kind, 'edge-case');
 });
 
@@ -37,8 +37,8 @@ test('an unknown kind is rejected and lists the real ones', async () => {
 test('the kind is optional, and a gap without one shows none', async () => {
   const dir = await boardWithBox();
   execute(dir, ['ai', 'gap', 'b1', '--missing', 'Nothing says what happens when the username does not exist.']);
-  assert.equal(load(dir).gaps.g1.kind ?? null, null);
-  assert.match(execute(dir, ['show', 'b1']), /g1 \[open\] Nothing says/);
+  assert.equal(load(dir).gaps['b1.g1'].kind ?? null, null);
+  assert.match(execute(dir, ['show', 'b1']), /b1\.g1 \[open\] Nothing says/);
 });
 
 test('a fix-sounding gap is still rejected, with a kind or not', async () => {

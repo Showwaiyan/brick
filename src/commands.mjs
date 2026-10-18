@@ -1,6 +1,9 @@
 // Commands: parse arguments, call the rules, return one short line of text.
 import { parseArgs } from 'node:util';
-import { findProject, load, mutate, nextId, addEvent, TOOL_NAME, DATA_DIR, PLUGIN_NAME } from './store.mjs';
+import { findProject, load, mutate, newNodeId, addEvent, listBoards, activeKey, migrateLegacy, setActive, TOOL_NAME, DATA_DIR, PLUGIN_NAME } from './store.mjs';
+import { decorateIds } from './ids.mjs';
+import { resolveBoard, boardsText } from './boards.mjs';
+import { openOverview } from './overview.mjs';
 import { children } from './model.mjs';
 import { approve, reopen, supersede, restore, closeGap, needNode, nextOrder, blank, raiseGapChecked, lintSaid } from './rules.mjs';
 import { ls, show, log, brief, HELP } from './text.mjs';
@@ -52,7 +55,7 @@ export function addNode(data, f, now) {
     order = a.order + 1;
     for (const s of children(data, parent)) if (s.order >= order) s.order += 1;
   }
-  const id = nextId(data, f.kind === 'box' ? 'b' : 'p');
+  const id = newNodeId(data, f.kind, parent);
   const contract = {};
   for (const k of CONTRACT) contract[k] = clean(f.contract?.[k]);
   data.nodes[id] = {
@@ -226,14 +229,51 @@ export function execute(dir, argv, now = new Date().toISOString()) {
   throw new Error(`Unknown command "${cmd}". Run: ${T} help`);
 }
 
-// Entry point for the CLI: finds the project and runs the command.
+// Entry point for the CLI: finds the project, picks the board and runs the command.
 export function run(argv, cwd) {
   const [cmd] = argv;
   if (!cmd || cmd === 'help') return HELP;
   if (cmd === 'init') return initProject(cwd, argv.slice(1));
-  if (cmd !== 'ai' && !MUTATING[cmd] && !READING[cmd]) throw new Error(`Unknown command "${cmd}". Run: ${T} help`);
+  if (cmd.startsWith('--board')) throw new Error(`Put --board after the command, for example: ${T} ls --board LOGIN`);
+  const own = ['boards', 'use'].includes(cmd);
+  if (!own && cmd !== 'ai' && !MUTATING[cmd] && !READING[cmd]) throw new Error(`Unknown command "${cmd}". Run: ${T} help`);
   const project = findProject(cwd);
   for (const w of project.warnings) console.error(w);
   if (!project.exists) throw new Error(`No ${DATA_DIR}/ here. Run: ${T} init "<name>"`);
-  return execute(project.dir, argv);
+  migrateLegacy(project.dir);
+  if (cmd === 'boards') return boardsText(project.dir);
+  if (cmd === 'use') return useBoard(project.dir, argv.slice(1));
+  if (cmd === 'open' && wantsOverview(project.dir, argv)) {
+    const { file, opened } = openOverview(project.dir);
+    const quiet = argv.includes('--quiet');
+    return quiet ? '' : opened ? `opened ${file}` : `Could not open a browser. The page is here: ${file}`;
+  }
+  if (cmd === 'ls' && argv.includes('--all')) {
+    return listBoards(project.dir).map((b) => execute(b.dir, ['ls'])).join('\n\n');
+  }
+  const board = resolveBoard(project.dir, argv.filter((a) => a !== '--all'));
+  if (cmd === 'ai' && !board.explicit && listBoards(project.dir).length > 1) {
+    throw new Error(`Several boards. Name the board on every ${T} ai command: add --board <KEY> (or use a full id). If you do not know which board the user means, ask them before recording anything.`);
+  }
+  const out = execute(board.dir, board.argv);
+  if (cmd !== 'ai' && !MUTATING[cmd]) return out;
+  if (board.explicit) setActive(project.dir, board.key); // reads leave the pointer alone
+  return decorateIds(out, board.key);
+}
+
+// `open --all`, or plain `open` with several boards, none named and none active, shows the overview.
+function wantsOverview(dataDir, argv) {
+  if (argv.includes('--all')) return true;
+  const named = argv.some((a) => a === '--board' || a.startsWith('--board='));
+  return !named && !activeKey(dataDir) && listBoards(dataDir).length > 1;
+}
+
+// `board use KEY`: points the active board at KEY.
+function useBoard(dataDir, args) {
+  if (args.length !== 1) throw new Error(`Usage: ${T} use <KEY>`);
+  const key = args[0].toUpperCase();
+  const keys = listBoards(dataDir).map((b) => b.key);
+  if (!keys.includes(key)) throw new Error(`There is no board "${args[0]}". Boards: ${keys.join(', ') || 'none'}.`);
+  setActive(dataDir, key);
+  return `using board ${key}`;
 }
