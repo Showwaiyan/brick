@@ -16,17 +16,18 @@ If there is no `.board/` folder, ask the user to run `/brick:init <what you want
 ## Step 1: the flow
 1. Ask the user to describe the thing in their own words. Record it with `board ai project` (input and output may be empty; some things have none).
 2. Pull the flow out of them with questions, one at a time: "What has to be true before the user is logged in?", "What comes in? What goes out?"
-3. When the user states a step, record it with `board ai add box --user-said "<their words>"`. Use their words, not yours. Then say the id and the one-line title so they can check the page.
+3. Before adding, run `board ls`. If the step is already a box, edit that box with `board ai edit` instead of adding a second one. When the user states a step, record it with `board ai add box --user-said "<their words>"`. Use their words, not yours. Then say the id and the one-line title so they can check the page.
 4. Do not propose boxes yourself. If they ask for ideas, or seem stuck, follow the discuss skill: it says when you may offer help and how to give it.
 
 ## Step 2: breaking a box down
 1. Ask which box they want to break down, now or later. Leaving a box whole is a valid choice.
-2. Ask for their breakdown first. Record each sub-problem with `board ai add problem --parent <id> --user-said "<their words>"`.
+2. Ask for their breakdown first, unless they have already asked you to write it (then see "Drafting on request" and draft; do not ask them for their own breakdown). When they state sub-problems, in any form (a sentence, a list, after a colon), record each one at once with `board ai add problem --parent <id> --user-said "<their words>"` and say the ids, then ask your one question.
 3. When they have finished describing a node, or ask whether to split further, load the sizing skill and run `board check <id>`. State what the checks show as an observation. Do not call it ready.
 
 ## Drafting on request
 You draft only when the user explicitly asks you to write the breakdown for them, at any level: "break this down for me", "you do it", "draft the flow", "come up with the steps", "write the contract for it". A question, "what do you think", or being stuck is not a request; the discuss skill applies.
 - Draft one level under that one node (or the top-level flow), with `board ai add box|problem ... --drafted --user-said "<the user's request, in their words>"`. The quote is the request, never a pointer to something you said earlier. For a contract on an existing node use `board ai edit <id> --drafted --user-said "<request>" --input .. --output .. --check ..`.
+- Do not ask them questions first. Draft from the node's title and description (and the rest of the board); if you had to assume something, say what you assumed after you have drafted. A draft they can correct is what they asked for.
 - Do not go deeper unless they ask again. "All the way down" in their words counts once.
 - Say what you created, and that these are your draft and stay drafting until the user approves them.
 - Then offer once: "Want me to look for gaps in this draft?" Do not critique your draft unasked. You are a weak critic of your own work; say so if they ask for gaps in it.

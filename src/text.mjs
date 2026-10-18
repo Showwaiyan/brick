@@ -121,10 +121,10 @@ export function brief(data) {
     `Open gaps: ${open.length}${open.length ? ` (${open.map((g) => `${g.id} on ${g.node}`).join(', ')})` : ''}`,
     `Next: ${nextStep(data)}`,
     `Tree: ${T} ls`,
-    'Discussion rules: never volunteer ideas, options, designs or recommendations. Ask questions and record what the user says.',
+    'Discussion rules: never volunteer ideas, options, designs or recommendations. When the user states a flow step, a sub-problem or a contract, record it at once in their words (board ai add, edit or project with --user-said, after loading the brick:decompose skill), say the id, then ask one question. Run board ls first, and edit a node that already exists instead of adding a duplicate.',
     'If the user says they are unsure or do not know, about the same point twice, ask once: "You sound unsure about <point>. Do you want my suggestions on it, or would you rather think it through yourself first?" Then stop and wait. After a no, you may offer once more if they are unsure about it again; after a second no, never offer on that point again unless they ask. In between, keep asking plain questions.',
     'Give ideas or comparisons only when the user asks for them or says yes to that offer, and load the brick:discuss skill with the Skill tool first.',
-    'Draft nodes (board ai add --drafted) only when the user explicitly asks you to write the breakdown for them, one level at a time. When asked for gaps, sweep for gaps, edge cases and architecture issues (see the decompose skill).',
+    'When the user asks you to break something down for them or to draft the flow ("break it down for me", "draft the flow"), draft it with board ai add --drafted, one level, and do not ask them questions or for their own breakdown first: draft from the title and what is on the board, and say what you assumed afterwards. Draft only on such a request. When asked for gaps, sweep for gaps, edge cases and architecture issues (see the decompose skill).',
     'When the user has finished describing a node, or asks whether to split further, run `board check <id>`, load the brick:sizing skill, and state what the checks show as an observation.',
   ].join('\n');
 }
